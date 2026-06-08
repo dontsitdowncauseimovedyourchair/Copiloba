@@ -6,7 +6,10 @@ import math
 import os
 from colorthief import ColorThief
 from datetime import datetime
-
+import spotipy
+from spotipy.oauth2 import SpotifyOAuth
+import requests
+from gi.repository import GdkPixbuf
 
 # ──────────────────────────────────────────────
 # 1. ESTILOS CSS (Limpios y sin errores)
@@ -25,7 +28,7 @@ def load_all_css():
     .music-background {{
         background-image: linear-gradient(135deg, rgba({r},{g},{b},0.95), rgba({dark_r},{dark_g},{dark_b},0.95));
     }}
-    .sidebar-music {{ background: rgba(30,30,30,0.6); border-radius: 30px; padding: 20px; }}
+    .sidebar-music {{ background: transparent; border-radius: 30px; padding: 20px; }}
     .dashboard-music {{ background: rgba(255,255,255,0.1); border-radius: 40px; padding: 30px; }}
     .clock-label {{ color: white; font-size: 80px; font-weight: 900; }}
     
@@ -53,6 +56,30 @@ def load_all_css():
         color: white;
         font-size: 72px;
         font-weight: 900;
+    }}
+
+    .hero-song {{
+        font-size: 42px;
+        font-weight: 900;
+        color: white;
+    }}
+
+    .hero-artist {{
+        font-size: 22px;
+        color: rgba(255,255,255,0.75);
+    }}
+
+    .transport-button {{
+        background: transparent;
+        border: none;
+        box-shadow: none;
+
+        font-size: 54px;
+
+        color: white;
+
+        min-height: 80px;
+        min-width: 80px;
     }}
     """
     provider = Gtk.CssProvider()
@@ -718,92 +745,534 @@ class BottomBar(Gtk.Overlay):
 
         cr.show_text(number)
 
-class MusicScreen(Gtk.Overlay):
-    def __init__(self, nav_callback):
-        super().__init__()
-        
-        # 1. Fondo (Base del Overlay)
-        bg = Gtk.Box()
-        bg.get_style_context().add_class("music-background")
-        self.add(bg)
+class MusicGradientBG(Gtk.DrawingArea):
 
-        # 2. Contenedor Principal (Horizontal)
-        content = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=30)
+    def __init__(self):
+
+        super().__init__()
+
+        self.colors = [
+
+            (105, 17, 173),
+            (172, 70, 161),
+            (213, 93, 146),
+            (40, 40, 40)
+
+        ]
+
+        self.phase = 0
+
+        self.connect(
+            "draw",
+            self._draw
+        )
+
+        GLib.timeout_add(
+            33,
+            self.animate
+        )
+
+    def animate(self):
+
+        self.phase += 0.01
+
+        self.queue_draw()
+
+        return True
+
+    def set_palette(self, palette):
+
+        self.colors = palette
+
+    def _draw(self, widget, cr):
+
+        w = self.get_allocated_width()
+        h = self.get_allocated_height()
+
+        cr.set_source_rgb(
+            0.02,
+            0.02,
+            0.02
+        )
+
+        cr.paint()
+
+        t = self.phase
+
+        for i, color in enumerate(self.colors):
+
+            r, g, b = color
+
+            x = (
+                w * 0.2
+                + i * 200
+                + math.sin(t + i) * 120
+            )
+
+            y = (
+                h * 0.5
+                + math.cos(t * 0.7 + i) * 80
+            )
+
+            grad = cairo.RadialGradient(
+                x,
+                y,
+                0,
+                x,
+                y,
+                450
+            )
+
+            grad.add_color_stop_rgba(
+                0,
+                r / 255,
+                g / 255,
+                b / 255,
+                0.50
+            )
+
+            grad.add_color_stop_rgba(
+                1,
+                r / 255,
+                g / 255,
+                b / 255,
+                0
+            )
+
+            cr.set_source(
+                grad
+            )
+
+            cr.paint()
+
+        return False
+    
+class MusicScreen(Gtk.Overlay):
+
+    def __init__(self, nav_callback):
+
+        super().__init__()
+
+        # =========================
+        # SPOTIFY
+        # =========================
+
+        self.sp = spotipy.Spotify(
+            auth_manager=SpotifyOAuth(
+                client_id="6186b61db32f4eb59ae55a299ef475ad",
+                client_secret="7dea9bd274b0436fafea5b676838c71c",
+                redirect_uri="http://127.0.0.1:8888/callback",
+                scope="user-read-playback-state user-modify-playback-state"
+            )
+        )
+
+        self.current_cover = None
+
+        # =========================
+        # FONDO
+        # =========================
+
+        self.music_bg = MusicGradientBG()
+
+        self.add(
+            self.music_bg
+        )
+
+        # =========================
+        # CONTENIDO PRINCIPAL
+        # =========================
+
+        content = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=30
+        )
+
         content.set_margin_top(40)
         content.set_margin_bottom(40)
         content.set_margin_start(40)
         content.set_margin_end(40)
+
         self.add_overlay(content)
 
-        # 3. Sidebar (Izquierda)
-        sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        sidebar.get_style_context().add_class("sidebar-music")
-        btn_back = Gtk.Button(label="🏠")
-        btn_back.get_style_context().add_class("circle-button")
-        btn_back.connect("clicked", lambda x: nav_callback("home"))
-        sidebar.pack_start(btn_back, False, False, 0)
+        # =========================
+        # SIDEBAR
+        # =========================
 
-        # 4. Dashboard (Contenedor de la derecha)
-        dash = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        dash.get_style_context().add_class("dashboard-music")
+        sidebar = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL
+        )
 
-        # 5. Dash Main (El layout interno: Izquierda [Reloj/Imagen] + Derecha [Cards])
-        dash_main = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=20)
-        dash_main.get_style_context().add_class("dashboard")
+        sidebar.get_style_context().add_class(
+            "sidebar-music"
+        )
 
-        # --- Panel Izquierdo del Dash ---
-        left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-        lbl_date = Gtk.Label(label="Mon 18 May")
-        lbl_date.get_style_context().add_class("date-label")
-        lbl_clock = Gtk.Label(label="11:34")
-        lbl_clock.get_style_context().add_class("clock-label")
-        
-        img = Gtk.Image()
+        btn_back = Gtk.Button(
+            label="🏠"
+        )
+
+        btn_back.get_style_context().add_class(
+            "circle-button"
+        )
+
+        btn_back.connect(
+            "clicked",
+            lambda x: nav_callback("home")
+        )
+
+        sidebar.pack_start(
+            btn_back,
+            False,
+            False,
+            0
+        )
+
+        # =========================
+        # DASHBOARD
+        # =========================
+
+        dash = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL
+        )
+
+        dash.get_style_context().add_class(
+            "dashboard-music"
+        )
+
+        dash_main = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=20
+        )
+
+        # =========================
+        # CONTENIDO CENTRAL
+        # =========================
+
+        center = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=25
+        )
+
+        center.set_halign(Gtk.Align.CENTER)
+        center.set_valign(Gtk.Align.CENTER)
+
+        # portada
+
+        self.album_image = Gtk.Image()
+
+        self.album_image.set_halign(
+            Gtk.Align.CENTER
+        )
         try:
-            # Asegúrate de importar GdkPixbuf al inicio: from gi.repository import GdkPixbuf
-            from gi.repository import GdkPixbuf
-            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale("album.jpg", 240, 240, True)
-            img.set_from_pixbuf(pixbuf)
-        except: 
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                "album.jpg",
+                320,
+                320,
+                True
+            )
+
+            self.album_image.set_from_pixbuf(
+                pixbuf
+            )
+
+        except:
             pass
-        img.get_style_context().add_class("album-cover")
 
-        left.pack_start(lbl_date, False, False, 0)
-        left.pack_start(lbl_clock, False, False, 0)
-        left.pack_start(img, False, False, 0)
-        dash_main.pack_start(left, False, False, 0)
+        # titulo grande
 
-        # --- Panel Derecho del Dash ---
-        right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=20)
-        
-        map_card = Gtk.Box()
-        map_card.get_style_context().add_class("map-card")
-        map_card.set_size_request(450, 250)
-        lbl_map = Gtk.Label(label="MAP")
-        lbl_map.get_style_context().add_class("map-text")
-        map_card.add(lbl_map)
+        self.lbl_song = Gtk.Label(
+            label="Loading..."
+        )
 
-        music_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
-        music_card.get_style_context().add_class("music-card")
-        lbl_art = Gtk.Label(label="Labrinth")
-        lbl_art.get_style_context().add_class("artist-label")
-        lbl_song = Gtk.Label(label="ALL FOR US")
-        lbl_song.get_style_context().add_class("song-label")
-        lbl_ctrl = Gtk.Label(label="⏮  ⏸  ⏭")
-        lbl_ctrl.get_style_context().add_class("controls-label")
-        
-        music_card.pack_start(lbl_art, False, False, 0)
-        music_card.pack_start(lbl_song, False, False, 0)
-        music_card.pack_start(lbl_ctrl, False, False, 0)
+        self.lbl_song.get_style_context().add_class(
+            "hero-song"
+        )
 
-        right.pack_start(map_card, True, True, 0)
-        right.pack_start(music_card, True, True, 0)
-        dash_main.pack_start(right, True, True, 0)
+        # artista
 
-        # 6. Empaquetado final en orden jerárquico
-        dash.pack_start(dash_main, True, True, 0) # Metemos todo el diseño en el dash
-        content.pack_start(sidebar, False, False, 0) # Sidebar al contenido principal
-        content.pack_start(dash, True, True, 0)    # Dash al contenido principal
+        self.lbl_art = Gtk.Label(
+            label=""
+        )
+
+        self.lbl_art.get_style_context().add_class(
+            "hero-artist"
+        )
+
+        # controles
+
+        controls = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=40
+        )
+
+        self.btn_prev = Gtk.Button(
+            label="⏮"
+        )
+
+        self.btn_play = Gtk.Button(
+            label="⏸"
+        )
+
+        self.btn_next = Gtk.Button(
+            label="⏭"
+        )
+
+        for btn in [
+            self.btn_prev,
+            self.btn_play,
+            self.btn_next
+        ]:
+            btn.get_style_context().add_class(
+                "transport-button"
+            )
+
+        controls.pack_start(
+            self.btn_prev,
+            False,
+            False,
+            0
+        )
+
+        controls.pack_start(
+            self.btn_play,
+            False,
+            False,
+            0
+        )
+
+        controls.pack_start(
+            self.btn_next,
+            False,
+            False,
+            0
+        )
+
+        self.btn_prev.connect(
+            "clicked",
+            self.previous_track
+        )
+
+        self.btn_play.connect(
+            "clicked",
+            self.toggle_play
+        )
+
+        self.btn_next.connect(
+            "clicked",
+            self.next_track
+        )
+
+        center.pack_start(
+            self.album_image,
+            False,
+            False,
+            0
+        )
+
+        center.pack_start(
+            self.lbl_song,
+            False,
+            False,
+            0
+        )
+
+        center.pack_start(
+            self.lbl_art,
+            False,
+            False,
+            0
+        )
+
+        center.pack_start(
+            controls,
+            False,
+            False,
+            0
+        )
+
+        content.pack_start(
+            sidebar,
+            False,
+            False,
+            0
+        )
+
+        content.pack_start(
+            center,
+            True,
+            True,
+            0
+        )
+        # =========================
+        # ACTUALIZAR SPOTIFY
+        # =========================
+
+        self.update_spotify()
+
+        GLib.timeout_add(
+            2000,
+            self.update_spotify
+        )
+
+    def update_album_art(self, url):
+        try:
+
+            response = requests.get(
+                url,
+                timeout=10
+            )
+
+            with open(
+                "current_album.jpg",
+                "wb"
+            ) as f:
+
+                f.write(
+                    response.content
+                )
+
+            # =========================
+            # EXTRAER COLORES
+            # =========================
+
+            try:
+
+                color_thief = ColorThief(
+                    "current_album.jpg"
+                )
+
+                palette = color_thief.get_palette(
+                    color_count=6
+                )
+
+                self.music_bg.set_palette(
+                    [
+                        palette[0],
+                        palette[1],
+                        palette[2],
+                        palette[3]
+                    ]
+                )
+
+            except Exception as e:
+
+                print(
+                    "ColorThief error:",
+                    e
+                )
+
+            # =========================
+            # CARGAR PORTADA
+            # =========================
+
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file(
+                "current_album.jpg"
+            )
+
+            pixbuf = pixbuf.scale_simple(
+                280,
+                280,
+                GdkPixbuf.InterpType.BILINEAR
+            )
+
+            self.album_image.set_from_pixbuf(
+                pixbuf
+            )
+
+        except Exception as e:
+
+            print(
+                "Album art error:",
+                e
+            )
+
+    def update_spotify(self):
+
+        try:
+
+            playback = self.sp.current_playback()
+
+            if not playback:
+                return True
+
+            track = playback["item"]
+
+            if not track:
+                return True
+
+            song = track["name"]
+
+            artist = track["artists"][0]["name"]
+
+            cover = (
+                track["album"]
+                ["images"][0]
+                ["url"]
+            )
+
+            self.lbl_song.set_text(
+                song
+            )
+
+            self.lbl_art.set_text(
+                artist
+            )
+
+            if cover != self.current_cover:
+
+                self.current_cover = cover
+
+                self.update_album_art(
+                    cover
+                )
+
+        except Exception as e:
+
+            print(
+                "Spotify error:",
+                e
+            )
+
+        return True
+    def next_track(self, widget):
+
+        try:
+            self.sp.next_track()
+        except Exception as e:
+            print(e)
+
+    def previous_track(self, widget):
+
+        try:
+            self.sp.previous_track()
+        except Exception as e:
+            print(e)
+
+
+    def toggle_play(self, widget):
+
+        try:
+
+            playback = self.sp.current_playback()
+
+            if playback["is_playing"]:
+
+                self.sp.pause_playback()
+
+                self.btn_play.set_label(
+                    "▶"
+                )
+
+            else:
+
+                self.sp.start_playback()
+
+                self.btn_play.set_label(
+                    "⏸"
+                )
+
+        except Exception as e:
+
+            print(e)
 
 class ClockWidget(Gtk.Box):
 
