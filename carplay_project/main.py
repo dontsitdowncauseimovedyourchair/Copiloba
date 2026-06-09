@@ -39,6 +39,8 @@ def load_all_css():
         box-shadow: none;
         font-size: 35px;
         color: white;
+        min-width: 80px;
+        min-height: 80px;
     }}
     .circle-button {{
         background: rgba(255,255,255,0.1);
@@ -130,13 +132,13 @@ class MainGradientBG(Gtk.DrawingArea):
         h = widget.get_allocated_height()
 
         # ==========================
-        # FONDO OSCURO
+        # FONDO BASE
         # ==========================
 
         cr.set_source_rgb(
-            0.02,
-            0.01,
-            0.04
+            0.12,
+            0.11,
+            0.16
         )
 
         cr.paint()
@@ -144,13 +146,11 @@ class MainGradientBG(Gtk.DrawingArea):
         t = self.phase
 
         # ==========================
-        # BLOB 1
+        # BLOB 1 - PURPLE
         # ==========================
 
         x1 = w * 0.30 + math.sin(t * 0.7) * 180
         y1 = h * 0.25 + math.cos(t * 0.4) * 120
-
-        r1 = w * 0.65
 
         g1 = cairo.RadialGradient(
             x1,
@@ -158,15 +158,23 @@ class MainGradientBG(Gtk.DrawingArea):
             0,
             x1,
             y1,
-            r1
+            w * 0.75
         )
 
         g1.add_color_stop_rgba(
             0,
-            0.45,
-            0.10,
-            0.85,
-            0.45
+            0.55,
+            0.18,
+            1.00,
+            0.75
+        )
+
+        g1.add_color_stop_rgba(
+            0.6,
+            0.55,
+            0.18,
+            1.00,
+            0.25
         )
 
         g1.add_color_stop_rgba(
@@ -181,13 +189,11 @@ class MainGradientBG(Gtk.DrawingArea):
         cr.paint()
 
         # ==========================
-        # BLOB 2
+        # BLOB 2 - BLUE
         # ==========================
 
         x2 = w * 0.75 + math.cos(t * 0.5) * 140
         y2 = h * 0.30 + math.sin(t * 0.8) * 110
-
-        r2 = w * 0.50
 
         hue_shift = (
             math.sin(t * 0.3) + 1
@@ -199,15 +205,23 @@ class MainGradientBG(Gtk.DrawingArea):
             0,
             x2,
             y2,
-            r2
+            w * 0.65
         )
 
         g2.add_color_stop_rgba(
             0,
-            0.25 + hue_shift * 0.25,
-            0.35,
-            0.95,
-            0.35
+            0.35 + hue_shift * 0.20,
+            0.45,
+            1.00,
+            0.60
+        )
+
+        g2.add_color_stop_rgba(
+            0.6,
+            0.35 + hue_shift * 0.20,
+            0.45,
+            1.00,
+            0.20
         )
 
         g2.add_color_stop_rgba(
@@ -222,13 +236,11 @@ class MainGradientBG(Gtk.DrawingArea):
         cr.paint()
 
         # ==========================
-        # BLOB 3
+        # BLOB 3 - CYAN
         # ==========================
 
         x3 = w * 0.55 + math.sin(t * 0.9) * 220
         y3 = h * 0.80 + math.cos(t * 0.5) * 90
-
-        r3 = w * 0.45
 
         green = (
             math.sin(t * 0.4) + 1
@@ -240,15 +252,23 @@ class MainGradientBG(Gtk.DrawingArea):
             0,
             x3,
             y3,
-            r3
+            w * 0.55
         )
 
         g3.add_color_stop_rgba(
             0,
-            0.10,
-            0.15 + green * 0.35,
-            0.90,
-            0.25
+            0.15,
+            0.30 + green * 0.40,
+            1.00,
+            0.45
+        )
+
+        g3.add_color_stop_rgba(
+            0.6,
+            0.15,
+            0.30 + green * 0.40,
+            1.00,
+            0.15
         )
 
         g3.add_color_stop_rgba(
@@ -263,13 +283,11 @@ class MainGradientBG(Gtk.DrawingArea):
         cr.paint()
 
         # ==========================
-        # BLOB 4
+        # BLOB 4 - MAGENTA
         # ==========================
 
         x4 = w * 0.90 + math.sin(t * 0.2) * 80
         y4 = h * 0.65 + math.cos(t * 0.6) * 140
-
-        r4 = w * 0.55
 
         red = (
             math.sin(t * 0.25) + 1
@@ -281,15 +299,23 @@ class MainGradientBG(Gtk.DrawingArea):
             0,
             x4,
             y4,
-            r4
+            w * 0.65
         )
 
         g4.add_color_stop_rgba(
             0,
-            0.60 + red * 0.25,
+            0.75 + red * 0.20,
             0.15,
-            0.55,
-            0.20
+            0.70,
+            0.35
+        )
+
+        g4.add_color_stop_rgba(
+            0.6,
+            0.75 + red * 0.20,
+            0.15,
+            0.70,
+            0.12
         )
 
         g4.add_color_stop_rgba(
@@ -299,6 +325,10 @@ class MainGradientBG(Gtk.DrawingArea):
             0,
             0
         )
+
+        cr.set_source(g4)
+        cr.paint()
+
         # ==========================
         # BLOB 5 - SILVER
         # ==========================
@@ -312,13 +342,13 @@ class MainGradientBG(Gtk.DrawingArea):
             0,
             x5,
             y5,
-            w * 0.45
+            w * 0.55
         )
 
         g5.add_color_stop_rgba(
             0,
-            0.95,
-            0.95,
+            1.0,
+            1.0,
             1.0,
             0.18
         )
@@ -334,8 +364,6 @@ class MainGradientBG(Gtk.DrawingArea):
         cr.set_source(g5)
         cr.paint()
 
-        cr.set_source(g4)
-        cr.paint()
         # ==========================
         # BLOB 6 - GOLD
         # ==========================
@@ -353,15 +381,23 @@ class MainGradientBG(Gtk.DrawingArea):
             0,
             x6,
             y6,
-            w * 0.35
+            w * 0.45
         )
 
         g6.add_color_stop_rgba(
             0,
             1.0,
-            0.75 + gold * 0.15,
-            0.20,
-            0.14
+            0.80 + gold * 0.15,
+            0.25,
+            0.30
+        )
+
+        g6.add_color_stop_rgba(
+            0.6,
+            1.0,
+            0.80 + gold * 0.15,
+            0.25,
+            0.10
         )
 
         g6.add_color_stop_rgba(
@@ -374,17 +410,18 @@ class MainGradientBG(Gtk.DrawingArea):
 
         cr.set_source(g6)
         cr.paint()
+
         # ==========================
         # CENTER GLOW
         # ==========================
 
         glow = cairo.RadialGradient(
-            w * 0.55,
-            h * 0.45,
+            w * 0.5,
+            h * 0.5,
             0,
-            w * 0.55,
-            h * 0.45,
-            w * 0.40
+            w * 0.5,
+            h * 0.5,
+            w * 0.7
         )
 
         glow.add_color_stop_rgba(
@@ -392,7 +429,7 @@ class MainGradientBG(Gtk.DrawingArea):
             1,
             1,
             1,
-            0.10
+            0.08
         )
 
         glow.add_color_stop_rgba(
@@ -405,8 +442,9 @@ class MainGradientBG(Gtk.DrawingArea):
 
         cr.set_source(glow)
         cr.paint()
-        return False
 
+        return False
+    
 class MusicCard(Gtk.DrawingArea):
     def __init__(self):
         super().__init__()
@@ -475,7 +513,10 @@ class BottomBar(Gtk.Overlay):
 
         Gtk.Overlay.__init__(self)
 
-        self.set_size_request(1011, 85)
+        self.set_size_request(
+            1011,
+            85
+        )
 
         # ======================
         # CAPA CAIRO
@@ -492,7 +533,7 @@ class BottomBar(Gtk.Overlay):
 
         button_box = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=100
+            spacing=140
         )
 
         button_box.set_halign(Gtk.Align.CENTER)
@@ -862,7 +903,9 @@ class MusicScreen(Gtk.Overlay):
                 client_id="6186b61db32f4eb59ae55a299ef475ad",
                 client_secret="7dea9bd274b0436fafea5b676838c71c",
                 redirect_uri="http://127.0.0.1:8888/callback",
-                scope="user-read-playback-state user-modify-playback-state"
+                scope="user-read-playback-state user-modify-playback-state",
+                cache_path="/home/root/spotify.cache",
+                open_browser=False
             )
         )
 
@@ -1287,6 +1330,9 @@ class ClockWidget(Gtk.Box):
         self.lbl_date = Gtk.Label()
         self.lbl_clock = Gtk.Label()
 
+        self.lbl_date.set_xalign(0.5)
+        self.lbl_clock.set_xalign(0.5)
+
         self.lbl_date.get_style_context().add_class(
             "date-label"
         )
@@ -1333,8 +1379,7 @@ class ClockWidget(Gtk.Box):
 class CarPlayWindow(Gtk.Window):
     def __init__(self):
         super().__init__(title="CarPlay OS")
-        self.set_default_size(1024, 600)
-        self.set_resizable(False)
+        self.fullscreen()
 
         self.stack = Gtk.Stack()
         self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
@@ -1345,23 +1390,34 @@ class CarPlayWindow(Gtk.Window):
         self.stack.add_named(MusicScreen(self.navigate), "music")
 
     def _build_home(self):
+
         overlay = Gtk.Overlay()
         overlay.add(MainGradientBG())
 
         fixed = Gtk.Fixed()
 
+        fixed.set_hexpand(True)
+        fixed.set_vexpand(True)
+
         clock = ClockWidget()
 
         fixed.put(
             clock,
-            35,
-            25
+            430,
+            40
+        )
+
+        card = MusicCard()
+
+        card.set_size_request(
+            600,
+            400
         )
 
         fixed.put(
-            MusicCard(),
+            card,
             35,
-            150
+            120
         )
 
         fixed.put(
@@ -1369,15 +1425,18 @@ class CarPlayWindow(Gtk.Window):
             720,
             10
         )
- #       fixed.put(NavigationPanel(), 720, 265)
-        
-        # Barra de botones (Dock)
-        bar = BottomBar(self.navigate)
-        fixed.put(bar, 6, 515) # Centrado abajo
-        
-        overlay.add_overlay(fixed)
-        return overlay
 
+        bar = BottomBar(self.navigate)
+
+        fixed.put(
+            bar,
+            6,
+            505
+        )
+
+        overlay.add_overlay(fixed)
+
+        return overlay
     def navigate(self, name):
         self.stack.set_visible_child_name(name)
 
