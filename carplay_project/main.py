@@ -657,7 +657,9 @@ class HomeSpotifyCard(Gtk.Box):
             "dashboard-music"
         )
 
-        # portada
+        # ======================
+        # PORTADA
+        # ======================
 
         self.cover = Gtk.Image()
 
@@ -668,12 +670,16 @@ class HomeSpotifyCard(Gtk.Box):
             20
         )
 
-        # lado derecho
+        # ======================
+        # LADO DERECHO
+        # ======================
 
         right = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
             spacing=15
         )
+
+        # canción
 
         self.lbl_song = Gtk.Label(
             label="No music playing"
@@ -685,6 +691,8 @@ class HomeSpotifyCard(Gtk.Box):
 
         self.lbl_song.set_xalign(0)
 
+        # artista
+
         self.lbl_artist = Gtk.Label(
             label=""
         )
@@ -694,6 +702,76 @@ class HomeSpotifyCard(Gtk.Box):
         )
 
         self.lbl_artist.set_xalign(0)
+
+        # barra progreso
+
+        self.progress = Gtk.ProgressBar()
+
+
+
+        # ======================
+        # CONTROLES
+        # ======================
+
+        controls = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=20
+        )
+
+        btn_prev = Gtk.Button()
+
+        prev_img = Gtk.Image.new_from_file(
+            "/home/root/media/rewind.png"
+        )
+
+        btn_prev.set_image(
+            prev_img
+        )
+
+        btn_play = Gtk.Button()
+
+        play_img = Gtk.Image.new_from_file(
+            "/home/root/media/play.png"
+        )
+
+        btn_play.set_image(
+            play_img
+        )
+
+        btn_next = Gtk.Button()
+
+        next_img = Gtk.Image.new_from_file(
+            "/home/root/media/next.png"
+        )
+
+        btn_next.set_image(
+            next_img
+        )
+
+        controls.pack_start(
+            btn_prev,
+            False,
+            False,
+            0
+        )
+
+        controls.pack_start(
+            btn_play,
+            False,
+            False,
+            0
+        )
+
+        controls.pack_start(
+            btn_next,
+            False,
+            False,
+            0
+        )
+
+        # ======================
+        # AGREGAR AL PANEL
+        # ======================
 
         right.pack_start(
             self.lbl_song,
@@ -709,16 +787,55 @@ class HomeSpotifyCard(Gtk.Box):
             0
         )
 
+        right.pack_start(
+            self.progress,
+            False,
+            False,
+            0
+        )
+
+        right.pack_start(
+            controls,
+            False,
+            False,
+            0
+        )
+
         self.pack_start(
             right,
             True,
             True,
             0
         )
+    def update_progress(self, fraction):
+
+        self.progress.set_fraction(
+            fraction
+        )
+    def update_card(
+        self,
+        song,
+        artist
+    ):
+
+        self.lbl_song.set_text(
+            song
+        )
+
+        self.lbl_artist.set_text(
+            artist
+        )
+    def update_cover(self, pixbuf):
+
+        self.cover.set_from_pixbuf(
+            pixbuf
+        )
 
 class MusicScreen(Gtk.Overlay):
 
-    def __init__(self, nav_callback):
+    def __init__(self, nav_callback, home_card):
+
+        self.home_card = home_card
 
         super().__init__()
 
@@ -777,9 +894,13 @@ class MusicScreen(Gtk.Overlay):
             "sidebar-music"
         )
 
-        btn_back = Gtk.Button(
-            label="🏠"
+        btn_back = Gtk.Button()
+
+        img = Gtk.Image.new_from_file(
+            "/home/root/media/home.png"
         )
+
+        btn_back.set_image(img)
 
         btn_back.get_style_context().add_class(
             "circle-button"
@@ -1079,8 +1200,8 @@ class MusicScreen(Gtk.Overlay):
             )
 
             pixbuf = pixbuf.scale_simple(
-                280,
-                280,
+                340,
+                340,
                 GdkPixbuf.InterpType.BILINEAR
             )
 
@@ -1108,6 +1229,12 @@ class MusicScreen(Gtk.Overlay):
 
             if not track:
                 return True
+            
+            fraction = (
+                playback["progress_ms"]
+                /
+                track["duration_ms"]
+            )
 
             song = track["name"]
 
@@ -1127,6 +1254,15 @@ class MusicScreen(Gtk.Overlay):
                 artist
             )
 
+            self.home_card.update_card(
+                song,
+                artist
+            )
+
+
+            self.home_card.update_progress(
+                fraction
+            )
             if cover != self.current_cover:
 
                 self.current_cover = cover
@@ -1342,6 +1478,7 @@ class CameraScreen(Gtk.Overlay):
         self.pipeline.set_state(
             Gst.State.NULL
         )
+
 class ClockWidget(Gtk.Box):
 
     def __init__(self):
@@ -1412,7 +1549,15 @@ class CarPlayWindow(Gtk.Window):
 
         # Cargar Vistas
         self.stack.add_named(self._build_home(), "home")
-        self.stack.add_named(MusicScreen(self.navigate), "music")
+        self.music_screen = MusicScreen(
+            self.navigate,
+            self.home_card
+        )
+
+        self.stack.add_named(
+            self.music_screen,
+            "music"
+        )
         self.camera_screen = CameraScreen(
             self.navigate
         )
@@ -1440,10 +1585,10 @@ class CarPlayWindow(Gtk.Window):
             40
         )
 
-        card = HomeSpotifyCard()
+        self.home_card = HomeSpotifyCard()
 
         fixed.put(
-            card,
+            self.home_card,
             30,
             130
         )
