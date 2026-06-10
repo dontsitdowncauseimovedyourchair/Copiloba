@@ -10,6 +10,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import requests
 from gi.repository import GdkPixbuf
+import random
 
 # ──────────────────────────────────────────────
 # 1. ESTILOS CSS (Limpios y sin errores)
@@ -108,15 +109,17 @@ class MainGradientBG(Gtk.DrawingArea):
 
         self.phase = 0.0
 
+        self.theme = random.randint(0, 4)
+
         self.connect(
             "draw",
             self._draw
         )
 
-        GLib.timeout_add(
-            16,
-            self.animate
-        )
+# GLib.timeout_add(
+#     16,
+#     self.animate
+# )
 
     def animate(self):
 
@@ -145,6 +148,51 @@ class MainGradientBG(Gtk.DrawingArea):
 
         t = self.phase
 
+        if self.theme == 0:      # Morado
+
+            c1 = (0.55, 0.18, 1.00)
+            c2 = (0.35, 0.45, 1.00)
+            c3 = (0.15, 0.70, 1.00)
+            c4 = (0.85, 0.15, 0.70)
+            c5 = (1.00, 1.00, 1.00)
+            c6 = (1.00, 0.85, 0.25)
+
+        elif self.theme == 1:    # Rosa
+
+            c1 = (1.00, 0.30, 0.75)
+            c2 = (1.00, 0.50, 0.85)
+            c3 = (0.80, 0.35, 1.00)
+            c4 = (1.00, 0.15, 0.45)
+            c5 = (1.00, 1.00, 1.00)
+            c6 = (1.00, 0.75, 0.40)
+
+        elif self.theme == 2:    # Azul
+
+            c1 = (0.25, 0.45, 1.00)
+            c2 = (0.10, 0.70, 1.00)
+            c3 = (0.15, 0.90, 0.90)
+            c4 = (0.35, 0.35, 1.00)
+            c5 = (1.00, 1.00, 1.00)
+            c6 = (0.85, 0.90, 1.00)
+
+        elif self.theme == 3:    # Atardecer
+
+            c1 = (1.00, 0.40, 0.20)
+            c2 = (1.00, 0.65, 0.15)
+            c3 = (1.00, 0.25, 0.55)
+            c4 = (0.80, 0.15, 0.75)
+            c5 = (1.00, 1.00, 1.00)
+            c6 = (1.00, 0.90, 0.40)
+
+        else:                    # Aqua
+
+            c1 = (0.10, 0.85, 0.75)
+            c2 = (0.10, 0.65, 1.00)
+            c3 = (0.15, 1.00, 0.60)
+            c4 = (0.20, 0.80, 0.95)
+            c5 = (1.00, 1.00, 1.00)
+            c6 = (0.90, 1.00, 0.60)
+
         # ==========================
         # BLOB 1 - PURPLE
         # ==========================
@@ -163,17 +211,17 @@ class MainGradientBG(Gtk.DrawingArea):
 
         g1.add_color_stop_rgba(
             0,
-            0.55,
-            0.18,
-            1.00,
+            c1[0],
+            c1[1],
+            c1[2],
             0.75
         )
 
         g1.add_color_stop_rgba(
             0.6,
-            0.55,
-            0.18,
-            1.00,
+            c1[0],
+            c1[1],
+            c1[2],
             0.25
         )
 
@@ -195,10 +243,6 @@ class MainGradientBG(Gtk.DrawingArea):
         x2 = w * 0.75 + math.cos(t * 0.5) * 140
         y2 = h * 0.30 + math.sin(t * 0.8) * 110
 
-        hue_shift = (
-            math.sin(t * 0.3) + 1
-        ) / 2
-
         g2 = cairo.RadialGradient(
             x2,
             y2,
@@ -210,17 +254,17 @@ class MainGradientBG(Gtk.DrawingArea):
 
         g2.add_color_stop_rgba(
             0,
-            0.35 + hue_shift * 0.20,
-            0.45,
-            1.00,
+            c2[0],
+            c2[1],
+            c2[2],
             0.60
         )
 
         g2.add_color_stop_rgba(
             0.6,
-            0.35 + hue_shift * 0.20,
-            0.45,
-            1.00,
+            c2[0],
+            c2[1],
+            c2[2],
             0.20
         )
 
@@ -242,10 +286,6 @@ class MainGradientBG(Gtk.DrawingArea):
         x3 = w * 0.55 + math.sin(t * 0.9) * 220
         y3 = h * 0.80 + math.cos(t * 0.5) * 90
 
-        green = (
-            math.sin(t * 0.4) + 1
-        ) / 2
-
         g3 = cairo.RadialGradient(
             x3,
             y3,
@@ -257,17 +297,17 @@ class MainGradientBG(Gtk.DrawingArea):
 
         g3.add_color_stop_rgba(
             0,
-            0.15,
-            0.30 + green * 0.40,
-            1.00,
+            c3[0],
+            c3[1],
+            c3[2],
             0.45
         )
 
         g3.add_color_stop_rgba(
             0.6,
-            0.15,
-            0.30 + green * 0.40,
-            1.00,
+            c3[0],
+            c3[1],
+            c3[2],
             0.15
         )
 
@@ -289,10 +329,6 @@ class MainGradientBG(Gtk.DrawingArea):
         x4 = w * 0.90 + math.sin(t * 0.2) * 80
         y4 = h * 0.65 + math.cos(t * 0.6) * 140
 
-        red = (
-            math.sin(t * 0.25) + 1
-        ) / 2
-
         g4 = cairo.RadialGradient(
             x4,
             y4,
@@ -304,17 +340,17 @@ class MainGradientBG(Gtk.DrawingArea):
 
         g4.add_color_stop_rgba(
             0,
-            0.75 + red * 0.20,
-            0.15,
-            0.70,
+            c4[0],
+            c4[1],
+            c4[2],
             0.35
         )
 
         g4.add_color_stop_rgba(
             0.6,
-            0.75 + red * 0.20,
-            0.15,
-            0.70,
+            c4[0],
+            c4[1],
+            c4[2],
             0.12
         )
 
@@ -347,9 +383,9 @@ class MainGradientBG(Gtk.DrawingArea):
 
         g5.add_color_stop_rgba(
             0,
-            1.0,
-            1.0,
-            1.0,
+            c5[0],
+            c5[1],
+            c5[2],
             0.18
         )
 
@@ -371,9 +407,6 @@ class MainGradientBG(Gtk.DrawingArea):
         x6 = w * 0.80 + math.sin(t * 0.45) * 120
         y6 = h * 0.20 + math.cos(t * 0.25) * 80
 
-        gold = (
-            math.sin(t * 0.15) + 1
-        ) / 2
 
         g6 = cairo.RadialGradient(
             x6,
@@ -386,17 +419,17 @@ class MainGradientBG(Gtk.DrawingArea):
 
         g6.add_color_stop_rgba(
             0,
-            1.0,
-            0.80 + gold * 0.15,
-            0.25,
+            c6[0],
+            c6[1],
+            c6[2],
             0.30
         )
 
         g6.add_color_stop_rgba(
             0.6,
-            1.0,
-            0.80 + gold * 0.15,
-            0.25,
+            c6[0],
+            c6[1],
+            c6[2],
             0.10
         )
 
@@ -794,10 +827,10 @@ class MusicGradientBG(Gtk.DrawingArea):
 
         self.colors = [
 
-            (105, 17, 173),
-            (172, 70, 161),
-            (213, 93, 146),
-            (40, 40, 40)
+            (255, 80, 180),   # rosa
+            (120, 70, 255),   # morado
+            (60, 180, 255),   # azul
+            (255, 180, 60)
 
         ]
 
@@ -808,22 +841,25 @@ class MusicGradientBG(Gtk.DrawingArea):
             self._draw
         )
 
-        GLib.timeout_add(
-            33,
-            self.animate
-        )
-
-    def animate(self):
-
-        self.phase += 0.01
-
-        self.queue_draw()
-
-        return True
-
     def set_palette(self, palette):
 
-        self.colors = palette
+        boosted = []
+
+        for r, g, b in palette:
+
+            boosted.append(
+
+                (
+                    min(255, int(r * 1.6)),
+                    min(255, int(g * 1.6)),
+                    min(255, int(b * 1.6))
+                )
+
+            )
+
+        self.colors = boosted
+
+        self.queue_draw()
 
     def _draw(self, widget, cr):
 
@@ -831,14 +867,14 @@ class MusicGradientBG(Gtk.DrawingArea):
         h = self.get_allocated_height()
 
         cr.set_source_rgb(
-            0.02,
-            0.02,
-            0.02
+            0.10,
+            0.08,
+            0.15
         )
 
         cr.paint()
 
-        t = self.phase
+        t = 0
 
         for i, color in enumerate(self.colors):
 
@@ -861,7 +897,7 @@ class MusicGradientBG(Gtk.DrawingArea):
                 0,
                 x,
                 y,
-                450
+                700
             )
 
             grad.add_color_stop_rgba(
@@ -869,7 +905,7 @@ class MusicGradientBG(Gtk.DrawingArea):
                 r / 255,
                 g / 255,
                 b / 255,
-                0.50
+                0.85
             )
 
             grad.add_color_stop_rgba(
