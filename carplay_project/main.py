@@ -11,6 +11,12 @@ from spotipy.oauth2 import SpotifyOAuth
 import requests
 from gi.repository import GdkPixbuf
 import random
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gst", "1.0")
+
+from gi.repository import Gtk, Gdk, GLib, Gst
 
 # ──────────────────────────────────────────────
 # 1. ESTILOS CSS (Limpios y sin errores)
@@ -83,6 +89,31 @@ def load_all_css():
 
         min-height: 80px;
         min-width: 80px;
+    }}
+    .floating-dock {{
+
+        background: rgba(255,255,255,0.12);
+
+        border-radius: 35px;
+
+        padding: 14px 28px;
+    }}
+    .dock-button {{
+
+        background: transparent;
+
+        border: none;
+
+        box-shadow: none;
+
+        padding: 12px;
+    }}
+
+    .dock-button:hover {{
+
+        background: rgba(255,255,255,0.12);
+
+        border-radius: 18px;
     }}
     """
     provider = Gtk.CssProvider()
@@ -498,326 +529,10 @@ class MusicCard(Gtk.DrawingArea):
         cr.set_font_size(16); cr.move_to(120, 95); cr.show_text("Dua Lipa")
         return False
 
-class MemojiPanel(Gtk.DrawingArea):
-    def __init__(self):
-        super().__init__()
-        self.set_size_request(272, 243)
-        self.connect("draw", self._draw)
-    def _draw(self, widget, cr):
-        w, h = 272, 243
-        grad = cairo.LinearGradient(0, 0, 0, h)
-        grad.add_color_stop_rgb(0, 0.78, 0.6, 0.92) # Lila
-        grad.add_color_stop_rgb(1, 0.44, 0.34, 0.52) # Morado
-        cr.set_source(grad)
-        rounded_rect(cr, 0, 0, w, h, 15); cr.fill()
-        # Emoji placeholder (Lobo)
-        cr.set_source_rgb(1, 1, 1)
-        cr.set_font_size(80); cr.move_to(w/2-40, h/2+30); cr.show_text("🐺")
-        return False
-"""
-class NavigationPanel(Gtk.DrawingArea):
-    def __init__(self):
-        super().__init__()
-        self.set_size_request(272, 272)
-        self.connect("draw", self._draw)
-    def _draw(self, widget, cr):
-        w, h = 272, 272
-        cr.set_source_rgb(0.1, 0.12, 0.15)
-        rounded_rect(cr, 0, 0, w, h, 15); cr.fill()
-        # Simular mapa
-        cr.set_source_rgb(0.2, 0.25, 0.3)
-        cr.set_line_width(4)
-        for i in range(0, w, 40):
-            cr.move_to(i, 0); cr.line_to(i, h); cr.stroke()
-            cr.move_to(0, i); cr.line_to(w, i); cr.stroke()
-        return False
-"""
+
 # ──────────────────────────────────────────────
 # 3. INTERFAZ Y NAVEGACIÓN
 # ──────────────────────────────────────────────
-class BottomBar(Gtk.Overlay):
-    """
-    Bottom dock:
-    - Cairo dibuja el fondo
-    - GTK maneja botones reales
-    """
-
-    def __init__(self, nav_callback):
-
-        Gtk.Overlay.__init__(self)
-
-        self.set_size_request(
-            1011,
-            85
-        )
-
-        # ======================
-        # CAPA CAIRO
-        # ======================
-
-        self.bg = Gtk.DrawingArea()
-        self.bg.connect("draw", self._draw)
-
-        self.add(self.bg)
-
-        # ======================
-        # CAPA BOTONES
-        # ======================
-
-        button_box = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=140
-        )
-
-        button_box.set_halign(Gtk.Align.CENTER)
-        button_box.set_valign(Gtk.Align.CENTER)
-
-        btn_map = Gtk.Button(label="🗺️")
-        btn_music = Gtk.Button(label="🎵")
-        btn_loba = Gtk.Button(label="🐺")
-
-        for b in [btn_map, btn_music, btn_loba]:
-
-            b.get_style_context().add_class(
-                "dock-button"
-            )
-
-            b.set_relief(
-                Gtk.ReliefStyle.NONE
-            )
-
-            button_box.pack_start(
-                b,
-                False,
-                False,
-                0
-            )
-
-        btn_map.connect(
-            "clicked",
-            lambda x: nav_callback("home")
-        )
-
-        btn_music.connect(
-            "clicked",
-            lambda x: nav_callback("music")
-        )
-
-        btn_loba.connect(
-            "clicked",
-            lambda x: print("Copiloba")
-        )
-
-        self.add_overlay(button_box)
-
-    def _draw(self, widget, cr):
-
-        w = widget.get_allocated_width()
-        h = widget.get_allocated_height()
-
-        # ======================
-        # FONDO
-        # ======================
-
-        grad = cairo.LinearGradient(
-            0, 0, 0, h
-        )
-
-        grad.add_color_stop_rgba(
-            0.0,
-            0,
-            0,
-            0,
-            0.70
-        )
-
-        grad.add_color_stop_rgba(
-            0.62,
-            1,
-            1,
-            1,
-            0.70
-        )
-
-        cr.set_source(grad)
-
-        cr.rectangle(
-            0,
-            0,
-            w,
-            h
-        )
-
-        cr.fill()
-
-        # ======================
-        # FRANJA INFERIOR
-        # ======================
-
-        grad2 = cairo.LinearGradient(
-            0,
-            h * 0.39,
-            0,
-            h
-        )
-
-        grad2.add_color_stop_rgba(
-            0,
-            0,
-            0,
-            0,
-            0.03
-        )
-
-        grad2.add_color_stop_rgba(
-            1,
-            0.83,
-            0.83,
-            0.83,
-            0.27
-        )
-
-        cr.set_source(grad2)
-
-        cr.rectangle(
-            0,
-            h * 0.39,
-            w,
-            h
-        )
-
-        cr.fill()
-
-        # ======================
-        # INDICADORES PAGINA
-        # ======================
-
-        self._draw_page_indicator(
-            cr,
-            w * 0.085,
-            h * 0.64,
-            "25"
-        )
-
-        self._draw_page_indicator(
-            cr,
-            w * 0.915,
-            h * 0.64,
-            "25"
-        )
-
-        # ======================
-        # SEPARADORES
-        # ======================
-
-        cr.set_source_rgba(
-            1,
-            1,
-            1,
-            0.50
-        )
-
-        cr.set_line_width(1)
-
-        for sx in (
-            w * 0.373,
-            w * 0.627
-        ):
-
-            cr.move_to(
-                sx,
-                h * 0.43
-            )
-
-            cr.line_to(
-                sx,
-                h * 0.91
-            )
-
-            cr.stroke()
-
-        return False
-
-    def _draw_page_indicator(
-        self,
-        cr,
-        cx,
-        cy,
-        number
-    ):
-
-        cr.set_source_rgb(
-            0.20,
-            0.55,
-            1.0
-        )
-
-        cr.select_font_face(
-            "sans",
-            cairo.FONT_SLANT_NORMAL,
-            cairo.FONT_WEIGHT_BOLD
-        )
-
-        cr.set_font_size(18)
-
-        cr.move_to(
-            cx - 42,
-            cy + 7
-        )
-
-        cr.show_text("‹")
-
-        cr.move_to(
-            cx + 28,
-            cy + 7
-        )
-
-        cr.show_text("›")
-
-        # fondo cápsula
-
-        cr.set_source_rgba(
-            1,
-            1,
-            1,
-            0.20
-        )
-
-        rounded_rect(
-            cr,
-            cx - 22,
-            cy - 14,
-            44,
-            28,
-            14
-        )
-
-        cr.fill()
-
-        # número
-
-        cr.set_source_rgb(
-            1,
-            1,
-            1
-        )
-
-        cr.select_font_face(
-            "Sans",
-            cairo.FONT_SLANT_NORMAL,
-            cairo.FONT_WEIGHT_NORMAL
-        )
-
-        cr.set_font_size(20)
-
-        ext = cr.text_extents(number)
-
-        cr.move_to(
-            cx - ext.width / 2,
-            cy + 8
-        )
-
-        cr.show_text(number)
 
 class MusicGradientBG(Gtk.DrawingArea):
 
@@ -923,7 +638,84 @@ class MusicGradientBG(Gtk.DrawingArea):
             cr.paint()
 
         return False
-    
+
+class HomeSpotifyCard(Gtk.Box):
+
+    def __init__(self):
+
+        super().__init__(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=25
+        )
+
+        self.set_size_request(
+            650,
+            320
+        )
+
+        self.get_style_context().add_class(
+            "dashboard-music"
+        )
+
+        # portada
+
+        self.cover = Gtk.Image()
+
+        self.pack_start(
+            self.cover,
+            False,
+            False,
+            20
+        )
+
+        # lado derecho
+
+        right = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=15
+        )
+
+        self.lbl_song = Gtk.Label(
+            label="No music playing"
+        )
+
+        self.lbl_song.get_style_context().add_class(
+            "hero-song"
+        )
+
+        self.lbl_song.set_xalign(0)
+
+        self.lbl_artist = Gtk.Label(
+            label=""
+        )
+
+        self.lbl_artist.get_style_context().add_class(
+            "hero-artist"
+        )
+
+        self.lbl_artist.set_xalign(0)
+
+        right.pack_start(
+            self.lbl_song,
+            False,
+            False,
+            0
+        )
+
+        right.pack_start(
+            self.lbl_artist,
+            False,
+            False,
+            0
+        )
+
+        self.pack_start(
+            right,
+            True,
+            True,
+            0
+        )
+
 class MusicScreen(Gtk.Overlay):
 
     def __init__(self, nav_callback):
@@ -1083,16 +875,55 @@ class MusicScreen(Gtk.Overlay):
             spacing=40
         )
 
-        self.btn_prev = Gtk.Button(
-            label="⏮"
+        self.btn_prev = Gtk.Button()
+
+        self.btn_play = Gtk.Button()
+
+        self.btn_next = Gtk.Button()
+
+        prev_pix = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/media/rewind.png",
+            48,
+            48,
+            True
         )
 
-        self.btn_play = Gtk.Button(
-            label="⏸"
+        prev_img = Gtk.Image.new_from_pixbuf(
+            prev_pix
         )
 
-        self.btn_next = Gtk.Button(
-            label="⏭"
+        play_pix = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/media/play.png",
+            48,
+            48,
+            True
+        )
+
+        play_img = Gtk.Image.new_from_pixbuf(
+            play_pix
+        )
+
+        next_pix = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/media/next.png",
+            48,
+            48,
+            True
+        )
+
+        next_img = Gtk.Image.new_from_pixbuf(
+            next_pix
+        )
+
+        self.btn_prev.set_image(
+            prev_img
+        )
+
+        self.btn_play.set_image(
+            play_img
+        )
+
+        self.btn_next.set_image(
+            next_img
         )
 
         for btn in [
@@ -1353,6 +1184,164 @@ class MusicScreen(Gtk.Overlay):
 
             print(e)
 
+class CameraScreen(Gtk.Overlay):
+
+    def __init__(self, nav_callback):
+
+        super().__init__()
+
+        self.pipeline = Gst.parse_launch(
+            "v4l2src device=/dev/video7 ! "
+            "image/jpeg,width=640,height=360 ! "
+            "jpegdec ! "
+            "videoconvert ! "
+            "gtksink name=sink"
+        )
+
+        sink = self.pipeline.get_by_name(
+            "sink"
+        )
+
+        video_widget = sink.get_property(
+            "widget"
+        )
+
+        self.add(
+            video_widget
+        )
+
+        btn_home = Gtk.Button()
+
+        img = Gtk.Image.new_from_file(
+            "/home/root/media/home.png"
+        )
+
+        btn_home.set_image(img)
+
+        btn_home.set_halign(
+            Gtk.Align.START
+        )
+
+        btn_home.set_valign(
+            Gtk.Align.START
+        )
+
+        btn_home.set_margin_start(20)
+        btn_home.set_margin_top(20)
+
+        btn_home.set_size_request(
+            64,
+            64
+        )
+
+        btn_home.connect(
+            "clicked",
+            lambda x: nav_callback("home")
+        )
+
+        guide_layer = Gtk.DrawingArea()
+
+        guide_layer.set_can_focus(False)
+        guide_layer.set_sensitive(False)
+
+        guide_layer.connect(
+            "draw",
+            self.draw_guides
+        )
+
+        self.add_overlay(
+            guide_layer
+        )
+
+        self.add_overlay(
+            btn_home
+        )
+
+    def draw_guides(self, widget, cr):
+
+        w = widget.get_allocated_width()
+        h = widget.get_allocated_height()
+
+        cr.set_line_width(8)
+
+        # VERDE (lejos)
+
+        cr.set_source_rgba(
+            0,
+            1,
+            0,
+            0.85
+        )
+
+        cr.move_to(
+            w * 0.20,
+            h * 0.55
+        )
+
+        cr.line_to(
+            w * 0.80,
+            h * 0.55
+        )
+
+        cr.stroke()
+
+        # AMARILLO (medio)
+
+        cr.set_source_rgba(
+            1,
+            1,
+            0,
+            0.85
+        )
+
+        cr.move_to(
+            w * 0.15,
+            h * 0.72
+        )
+
+        cr.line_to(
+            w * 0.85,
+            h * 0.72
+        )
+
+        cr.stroke()
+
+        # ROJO (peligro)
+
+        cr.set_source_rgba(
+            1,
+            0,
+            0,
+            0.85
+        )
+
+        cr.move_to(
+            w * 0.10,
+            h * 0.88
+        )
+
+        cr.line_to(
+            w * 0.90,
+            h * 0.88
+        )
+
+        cr.stroke()
+
+        return False
+    
+    def start_camera(self):
+
+        print("START CAMERA")
+
+        self.pipeline.set_state(
+            Gst.State.PLAYING
+        )
+
+    def stop_camera(self):
+
+        self.pipeline.set_state(
+            Gst.State.NULL
+        )
 class ClockWidget(Gtk.Box):
 
     def __init__(self):
@@ -1424,6 +1413,14 @@ class CarPlayWindow(Gtk.Window):
         # Cargar Vistas
         self.stack.add_named(self._build_home(), "home")
         self.stack.add_named(MusicScreen(self.navigate), "music")
+        self.camera_screen = CameraScreen(
+            self.navigate
+        )
+
+        self.stack.add_named(
+            self.camera_screen,
+            "camera"
+        )
 
     def _build_home(self):
 
@@ -1443,40 +1440,110 @@ class CarPlayWindow(Gtk.Window):
             40
         )
 
-        card = MusicCard()
-
-        card.set_size_request(
-            600,
-            400
-        )
+        card = HomeSpotifyCard()
 
         fixed.put(
             card,
-            35,
-            120
+            30,
+            130
+        )
+        dock = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=60
+        )
+
+        dock.get_style_context().add_class(
+            "floating-dock"
+        )
+
+        def create_icon_button(path):
+
+            btn = Gtk.Button()
+
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                path,
+                42,
+                42,
+                True
+            )
+
+            img = Gtk.Image.new_from_pixbuf(
+                pixbuf
+            )
+
+            btn.set_image(img)
+
+            btn.set_relief(
+                Gtk.ReliefStyle.NONE
+            )
+
+            btn.get_style_context().add_class(
+                "dock-button"
+            )
+
+            return btn
+
+
+        btn_home = create_icon_button(
+            "/home/root/media/home.png"
+        )
+
+        btn_music = create_icon_button(
+            "/home/root/media/music.png"
+        )
+
+        btn_cam = create_icon_button(
+            "/home/root/media/camera.png"
+        )
+
+        for b in [btn_home, btn_music, btn_cam]:
+
+            dock.pack_start(
+                b,
+                False,
+                False,
+                0
+            )
+
+        btn_home.connect(
+            "clicked",
+            lambda x: self.navigate("home")
+        )
+
+        btn_music.connect(
+            "clicked",
+            lambda x: self.navigate("music")
+        )
+
+        btn_cam.connect(
+            "clicked",
+            lambda x: self.navigate("camera")
         )
 
         fixed.put(
-            MemojiPanel(),
-            720,
-            10
-        )
-
-        bar = BottomBar(self.navigate)
-
-        fixed.put(
-            bar,
-            6,
-            505
+            dock,
+            310,
+            530
         )
 
         overlay.add_overlay(fixed)
 
         return overlay
+        
     def navigate(self, name):
+
+        if name == "camera":
+
+            self.camera_screen.start_camera()
+
+        else:
+
+            self.camera_screen.stop_camera()
+
         self.stack.set_visible_child_name(name)
 
 if __name__ == "__main__":
+    Gst.init(None)
     load_all_css()
     win = CarPlayWindow()
     win.connect("destroy", Gtk.main_quit)
