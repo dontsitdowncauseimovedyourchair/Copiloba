@@ -6,6 +6,9 @@ from gi.repository import Gtk, Gdk, GLib, Gst, OsmGpsMap
 import cairo
 import math
 import os
+import json
+import urllib.request
+import urllib.parse
 from colorthief import ColorThief
 from datetime import datetime
 import spotipy
@@ -346,40 +349,389 @@ class TemperatureWidget(Gtk.Box):
 
 
 # ─────────────────────────────────────────────
-# 4. MAPA SCREEN
+# 4. NAVIGATION SYSTEM + MAP SCREEN
 # ─────────────────────────────────────────────
-class MapScreen(Gtk.Overlay):
-    """Full-screen OsmGpsMap view with a home button overlay."""
+class NavigationSystem:
+    """
+    Handles geocoding (Nominatim) and turn-by-turn routing (OSRM).
+    All network calls run in daemon threads; results are sent back to
+    the GTK main loop via GLib.idle_add so the UI never freezes.
+    """
 
-    LAT = 19.5556
-    LON = -99.2472
-    ZOOM = 14
+    NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+    OSRM_URL      = "http://router.project-osrm.org/route/v1/driving"
+    USER_AGENT    = "STM32-Carplay-Dev"
+
+    def geocode_async(self, query, callback):
+        """Resolve a place name to (lat, lon).  callback(lat, lon) on success,
+        callback(None, None) on failure — always called on the GTK thread."""
+        threading.Thread(
+            target=self._geocode_task,
+            args=(query, callback),
+            daemon=True,
+        ).start()
+
+    def _geocode_task(self, query, callback):
+        try:
+            params = urllib.parse.urlencode({
+                "q": query,
+                "format": "json",
+                "limit": 1,
+            })
+            url = f"{self.NOMINATIM_URL}?{params}"
+            req = urllib.request.Request(url, headers={"User-Agent": self.USER_AGENT})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode())
+            if data:
+                lat = float(data[0]["lat"])
+                lon = float(data[0]["lon"])
+                GLib.idle_add(callback, lat, lon)
+            else:
+                print(f"Geocode: no results for '{query}'")
+                GLib.idle_add(callback, None, None)
+        except Exception as e:
+            print(f"Geocode error: {e}")
+            GLib.idle_add(callback, None, None)
+
+    def request_osrm_route(self, map_widget, start_lat, start_lon, end_lat, end_lon):
+        """Spawn a background thread to fetch the route without freezing the UI."""
+        threading.Thread(
+            target=self._fetch_route_task,
+            args=(map_widget, start_lat, start_lon, end_lat, end_lon),
+            daemon=True,
+        ).start()
+
+    def _fetch_route_task(self, map_widget, start_lat, start_lon, end_lat, end_lon):
+        # ⚠️ CRITICAL PITFALL: OSRM expects Longitude FIRST in the URL!
+        url = (
+            f"{self.OSRM_URL}/"
+            f"{start_lon},{start_lat};{end_lon},{end_lat}"
+            f"?overview=full&geometries=geojson"
+        )
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": self.USER_AGENT})
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode())
+            if data["code"] == "Ok":
+                coordinates = data["routes"][0]["geometry"]["coordinates"]
+                GLib.idle_add(self._draw_route_on_map, map_widget, coordinates)
+            else:
+                print("OSRM routing failed:", data.get("code"))
+        except Exception as e:
+            print(f"Error connecting to OSRM: {e}")
+
+    def _draw_route_on_map(self, map_widget, coordinates):
+        """Executes on the main GTK thread to render the polyline."""
+        track = OsmGpsMap.Track()
+        for pt in coordinates:
+            pt_lon, pt_lat = pt[0], pt[1]
+            # ⚠️ CRITICAL PITFALL: OsmGpsMap expects Latitude FIRST!
+            map_point = OsmGpsMap.Point.new_degrees(pt_lat, pt_lon)
+            track.add_point(map_point)
+        map_widget.track_add(track)
+        return False  # stop GLib from re-calling
+
+
+class MapScreen(Gtk.Overlay):
+
+    HOME_LAT = 19.5556
+    HOME_LON = -99.2472
+    HOME_ZOOM = 14
 
     def __init__(self, nav_callback):
+
         super().__init__()
 
-        # Map widget
+        self._nav_system = NavigationSystem()
+        self._active_tracks = []
+
+        self._origin_lat = self.HOME_LAT
+        self._origin_lon = self.HOME_LON
+
+        # =========================
+        # MAPA
+        # =========================
+
         self.map_widget = OsmGpsMap.Map()
-        osd = OsmGpsMap.MapOsd(show_scale=True, show_coordinates=False)
+
+        osd = OsmGpsMap.MapOsd(
+            show_scale=True,
+            show_coordinates=False
+        )
+
         self.map_widget.layer_add(osd)
-        self.map_widget.set_center_and_zoom(self.LAT, self.LON, self.ZOOM)
-        self.add(self.map_widget)
 
-        # Overlay: home button (top-left)
+        self.map_widget.set_center_and_zoom(
+            self.HOME_LAT,
+            self.HOME_LON,
+            self.HOME_ZOOM
+        )
+
+        base = Gtk.Fixed()
+
+        base.put(
+            self.map_widget,
+            0,
+            0
+        )
+
+        self.add(base)
+
+        # =========================
+        # UI ENCIMA DEL MAPA
+        # =========================
+
+        ui_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=0
+        )
+
+        ui_box.set_halign(Gtk.Align.FILL)
+        ui_box.set_valign(Gtk.Align.START)
+
+        top_bar = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=10
+        )
+
+        top_bar.set_margin_top(16)
+        top_bar.set_margin_start(16)
+        top_bar.set_margin_end(16)
+
+        # =========================
+        # HOME
+        # =========================
+
         btn_home = Gtk.Button()
-        try:
-            img = Gtk.Image.new_from_file("/home/root/media/home.png")
-        except Exception:
-            img = Gtk.Label(label="⌂")
-        btn_home.set_image(img)
-        btn_home.get_style_context().add_class("circle-button")
-        btn_home.set_halign(Gtk.Align.START)
-        btn_home.set_valign(Gtk.Align.START)
-        btn_home.set_margin_start(20)
-        btn_home.set_margin_top(20)
-        btn_home.connect("clicked", lambda x: nav_callback("home"))
-        self.add_overlay(btn_home)
 
+        try:
+
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                "/home/root/media/home.png",
+                42,
+                42,
+                True
+            )
+
+            btn_home.set_image(
+                Gtk.Image.new_from_pixbuf(
+                    pixbuf
+                )
+            )
+
+        except:
+
+            btn_home.set_label("⌂")
+
+        btn_home.connect(
+            "clicked",
+            lambda _: nav_callback("home")
+        )
+
+        # =========================
+        # BUSCADOR
+        # =========================
+
+        self._entry = Gtk.Entry()
+
+        self._entry.set_placeholder_text(
+            "Buscar destino..."
+        )
+
+        self._entry.set_hexpand(True)
+
+        self._entry.connect(
+            "activate",
+            self._on_go_clicked
+        )
+
+        # =========================
+        # BOTON IR
+        # =========================
+
+        btn_go = Gtk.Button(
+            label="Ir"
+        )
+
+        btn_go.connect(
+            "clicked",
+            self._on_go_clicked
+        )
+
+        # =========================
+        # LIMPIAR
+        # =========================
+
+        btn_clear = Gtk.Button(
+            label="✕"
+        )
+
+        btn_clear.connect(
+            "clicked",
+            self._on_clear_clicked
+        )
+
+        # =========================
+        # STATUS
+        # =========================
+
+        self._lbl_status = Gtk.Label(
+            label=""
+        )
+
+        self._lbl_status.set_halign(
+            Gtk.Align.CENTER
+        )
+
+        # =========================
+        # LAYOUT
+        # =========================
+
+        top_bar.pack_start(
+            btn_home,
+            False,
+            False,
+            0
+        )
+
+        top_bar.pack_start(
+            self._entry,
+            True,
+            True,
+            0
+        )
+
+        top_bar.pack_start(
+            btn_go,
+            False,
+            False,
+            0
+        )
+
+        top_bar.pack_start(
+            btn_clear,
+            False,
+            False,
+            0
+        )
+
+        ui_box.pack_start(
+            top_bar,
+            False,
+            False,
+            0
+        )
+
+        ui_box.pack_start(
+            self._lbl_status,
+            False,
+            False,
+            0
+        )
+
+        base.put(
+            ui_box,
+            20,
+            20
+        )
+
+    # ====================================
+    # HELPERS
+    # ====================================
+
+    def _set_status(self, text, visible=True):
+
+        self._lbl_status.set_text(text)
+
+        if visible:
+
+            self._lbl_status.show()
+
+        else:
+
+            self._lbl_status.hide()
+
+    def _on_go_clicked(self, widget):
+
+        query = self._entry.get_text().strip()
+
+        if not query:
+            return
+
+        self._set_status(
+            "🔍 Buscando..."
+        )
+
+        self._nav_system.geocode_async(
+            query,
+            self._on_geocode_result
+        )
+
+    def _on_geocode_result(self, lat, lon):
+
+        if lat is None:
+
+            self._set_status(
+                "Destino no encontrado"
+            )
+
+            return
+
+        self._set_status(
+            "Calculando ruta..."
+        )
+
+        self.map_widget.gps_clear()
+
+        self.map_widget.gps_add(
+            lat,
+            lon,
+            0.0
+        )
+
+        self._nav_system.request_osrm_route(
+            self.map_widget,
+            self._origin_lat,
+            self._origin_lon,
+            lat,
+            lon
+        )
+
+        self.map_widget.set_center_and_zoom(
+            lat,
+            lon,
+            13
+        )
+
+        self._set_status(
+            "",
+            False
+        )
+
+    def _on_clear_clicked(self, widget):
+
+        try:
+
+            self.map_widget.track_remove_all()
+
+        except:
+
+            pass
+
+        self.map_widget.gps_clear()
+
+        self._entry.set_text("")
+
+        self._set_status(
+            "",
+            False
+        )
+
+        self.map_widget.set_center_and_zoom(
+            self.HOME_LAT,
+            self.HOME_LON,
+            self.HOME_ZOOM
+        )
 
 # ─────────────────────────────────────────────
 # 5. MÚSICA — HomeSpotifyCard
