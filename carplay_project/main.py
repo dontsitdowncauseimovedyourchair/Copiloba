@@ -1337,6 +1337,15 @@ class CarPlayWindow(Gtk.Window):
         else:
             print("NO ATTRIBUTE ai_assistant")
 
+    def update_ai_status(self, message):
+        """Safely updates the floating AI label from the background thread."""
+        if message:
+            self.ai_status_label.set_text(message)
+            self.ai_status_label.show()
+        else:
+            self.ai_status_label.hide()
+        return False  # Required for GTK3 to prevent infinite loops
+
 
 class VolumeWidget(Gtk.Box):
 
