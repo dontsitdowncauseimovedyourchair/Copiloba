@@ -1,5 +1,7 @@
 # services/copiloba_ai.py
 import os
+import json      # NUEVO
+import base64    # NUEVO
 import requests
 import subprocess
 import threading
@@ -10,9 +12,10 @@ AUDIO_FILE = "/tmp/driver_voice.wav"
 
 
 class CopilobaAssistant:
-    def __init__(self, status_callback=None):
+    def __init__(self, status_callback=None, command_callback=None):   # NUEVO param
         # This callback allows the AI to send text updates back to the GTK screen
         self.status_callback = status_callback
+        self.command_callback = command_callback                       # NUEVO
 
     def _update_ui(self, message):
         # Safely push updates to the GTK main loop without crashing it
@@ -35,6 +38,16 @@ class CopilobaAssistant:
 
                 if response.status_code == 200:
                     self._update_ui("Loba Loba")
+
+                    # NUEVO: ejecutar el comando ANTES de reproducir el audio,
+                    # así el volumen/canción/ruta cambia mientras Copiloba habla
+                    cmd_b64 = response.headers.get("X-Copiloba-Action")
+                    if cmd_b64 and self.command_callback:
+                        try:
+                            cmd = json.loads(base64.b64decode(cmd_b64).decode("utf-8"))
+                            self.command_callback(cmd)
+                        except Exception as e:
+                            print(f"Action parse error: {e}")
 
                     # 3. Play audio
                     play_process = subprocess.Popen(
