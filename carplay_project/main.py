@@ -1366,18 +1366,54 @@ class CarPlayWindow(Gtk.Window):
             btn.get_style_context().add_class("dock-button")
             return btn
 
-        btn_home   = create_icon_button("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/home.png")
-        btn_music  = create_icon_button("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/music.png")
-        btn_cam    = create_icon_button("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/camera.png")
+
+        btn_music  = Gtk.Button()
+        pixmusic = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/music.png",
+            42,
+            42,
+            True            
+        )
+        btn_music.set_image(
+            Gtk.Image.new_from_pixbuf(pixmusic)
+        )
+
+        btn_cam    = Gtk.Button()
+        pixcam = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/camera.png",
+            42,
+            42,     
+            True       
+        )
+        btn_cam.set_image(
+            Gtk.Image.new_from_pixbuf(pixcam)
+        )
         # Map button — uses your map.png icon
-        btn_map    = create_icon_button("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/map.png")
+        btn_map    = Gtk.Button()
+        pixmap = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/map.png",
+            42,
+            42, 
+            True
+        )
+        btn_map.set_image(
+            Gtk.Image.new_from_pixbuf(pixmap)
+        )
 
-        btn_mic = create_icon_button("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/copiloba.png")
+        btn_mic = Gtk.Button()
+        pixmic = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/mic.png",
+            42,
+            42,
+            True
+        )
+        btn_mic.set_image(
+            Gtk.Image.new_from_pixbuf(pixmic)
+        )
 
-        for b in [btn_home, btn_music, btn_cam, btn_map, btn_mic]:
+        for b in [btn_music, btn_cam, btn_map, btn_mic]:
             dock.pack_start(b, False, False, 0)
 
-        btn_home.connect( "clicked", lambda x: self.navigate("home"))
         btn_music.connect("clicked", lambda x: self.navigate("music"))
         btn_cam.connect(  "clicked", lambda x: self.navigate("camera"))
         btn_map.connect(  "clicked", lambda x: self.navigate("map"))
