@@ -164,98 +164,82 @@ def rounded_rect(cr, x, y, w, h, r):
 
 
 class MainGradientBG(Gtk.DrawingArea):
-    CELL = 20        # antes 13
-    SQUARE = 13      # antes 6
-    SHIFT = 0.10     # un poco más de contraste en los cuadritos
+    CELL = 20
+    SQUARE = 13
     EDGE_CELLS = 2
+    TEXTURE = 0.12   # qué tan visible es el patrón de cuadritos
+
+    THEMES = [
+        [(0.55, 0.18, 1.00), (0.35, 0.45, 1.00), (0.15, 0.70, 1.00)],  # violeta -> azul
+        [(1.00, 0.15, 0.45), (1.00, 0.45, 0.80), (0.80, 0.35, 1.00)],  # rosa -> lila
+        [(0.15, 0.90, 0.90), (0.10, 0.65, 1.00), (0.30, 0.35, 1.00)],  # cian -> azul
+        [(1.00, 0.45, 0.15), (1.00, 0.75, 0.20), (1.00, 0.25, 0.55)],  # naranja -> rosa
+        [(0.10, 0.85, 0.70), (0.15, 1.00, 0.55), (0.85, 1.00, 0.40)],  # turquesa -> lima
+    ]
+
     def __init__(self):
         super().__init__()
-        self.phase = 0.0
-        self.theme = random.randint(0, 4)
+        self.colors = random.choice(self.THEMES)
+        self._cache = None
+        self._cache_key = None
         self.connect("draw", self._draw)
 
-    def animate(self):
-        self.phase += 0.008
-        self.queue_draw()
-        return True
-    
-    
+    @staticmethod
+    def _mix(c1, c2, t):
+        return tuple(c1[i] + (c2[i] - c1[i]) * t for i in range(3))
+
+    def _grad(self, t):
+        a, b, c = self.colors
+        t = max(0.0, min(1.0, t))
+        if t < 0.5:
+            return self._mix(a, b, t * 2)
+        return self._mix(b, c, (t - 0.5) * 2)
 
     def _draw(self, widget, cr):
         w = widget.get_allocated_width()
         h = widget.get_allocated_height()
-        cr.set_source_rgb(0.12, 0.11, 0.16)
-        cr.paint()
-        t = self.phase
-        if self.theme == 0:
-            c1 = (0.55, 0.18, 1.00); c2 = (0.35, 0.45, 1.00)
-            c3 = (0.15, 0.70, 1.00); c4 = (0.85, 0.15, 0.70)
-            c5 = (1.00, 1.00, 1.00); c6 = (1.00, 0.85, 0.25)
-        elif self.theme == 1:
-            c1 = (1.00, 0.30, 0.75); c2 = (1.00, 0.50, 0.85)
-            c3 = (0.80, 0.35, 1.00); c4 = (1.00, 0.15, 0.45)
-            c5 = (1.00, 1.00, 1.00); c6 = (1.00, 0.75, 0.40)
-        elif self.theme == 2:
-            c1 = (0.25, 0.45, 1.00); c2 = (0.10, 0.70, 1.00)
-            c3 = (0.15, 0.90, 0.90); c4 = (0.35, 0.35, 1.00)
-            c5 = (1.00, 1.00, 1.00); c6 = (0.85, 0.90, 1.00)
-        elif self.theme == 3:
-            c1 = (1.00, 0.40, 0.20); c2 = (1.00, 0.65, 0.15)
-            c3 = (1.00, 0.25, 0.55); c4 = (0.80, 0.15, 0.75)
-            c5 = (1.00, 1.00, 1.00); c6 = (1.00, 0.90, 0.40)
-        else:
-            c1 = (0.10, 0.85, 0.75); c2 = (0.10, 0.65, 1.00)
-            c3 = (0.15, 1.00, 0.60); c4 = (0.20, 0.80, 0.95)
-            c5 = (1.00, 1.00, 1.00); c6 = (0.90, 1.00, 0.60)
+        if w <= 0 or h <= 0:
+            return False
 
-        blobs = [
-            (w * 0.30 + math.sin(t * 0.7) * 180, h * 0.25 + math.cos(t * 0.4) * 120, w * 0.75, c1, 0.75, 0.25),
-            (w * 0.75 + math.cos(t * 0.5) * 140, h * 0.30 + math.sin(t * 0.8) * 110, w * 0.65, c2, 0.60, 0.20),
-            (w * 0.55 + math.sin(t * 0.9) * 220, h * 0.80 + math.cos(t * 0.5) * 90,  w * 0.55, c3, 0.45, 0.15),
-            (w * 0.90 + math.sin(t * 0.2) * 80,  h * 0.65 + math.cos(t * 0.6) * 140, w * 0.65, c4, 0.35, 0.12),
-            (w * 0.15 + math.cos(t * 0.35) * 100, h * 0.75 + math.sin(t * 0.20) * 60, w * 0.55, c5, 0.18, 0.0),
-            (w * 0.80 + math.sin(t * 0.45) * 120, h * 0.20 + math.cos(t * 0.25) * 80, w * 0.45, c6, 0.30, 0.10),
-        ]
-        for (bx, by, br, c, a0, a1) in blobs:
-            g = cairo.RadialGradient(bx, by, 0, bx, by, br)
-            g.add_color_stop_rgba(0,   c[0], c[1], c[2], a0)
-            g.add_color_stop_rgba(0.6, c[0], c[1], c[2], a1)
-            g.add_color_stop_rgba(1,   0, 0, 0, 0)
-            cr.set_source(g)
-            cr.paint()
+        key = (w, h, tuple(self.colors))
+        if self._cache is None or self._cache_key != key:
+            self._cache = self._render(w, h)
+            self._cache_key = key
 
-        glow = cairo.RadialGradient(w * 0.5, h * 0.5, 0, w * 0.5, h * 0.5, w * 0.7)
-        glow.add_color_stop_rgba(0, 1, 1, 1, 0.08)
-        glow.add_color_stop_rgba(1, 1, 1, 1, 0)
-        cr.set_source_surface(self._get_texture(w, h), 0, 0)
+        cr.set_source_surface(self._cache, 0, 0)
         cr.paint()
         return False
-    
-    def _get_texture(self, w, h):
-        key = (w, h)
-        if getattr(self, "_tex_key", None) == key:
-            return self._tex
 
-        surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
-        c = cairo.Context(surf)
+    def _render(self, w, h):
+        surf = cairo.ImageSurface(cairo.FORMAT_RGB24, w, h)
+        cr = cairo.Context(surf)
 
-        cell, sq = self.CELL, self.SQUARE
+        # gradiente base, colores puros
+        grad = cairo.LinearGradient(0, 0, w, 0)
+        for pos in (0.0, 0.5, 1.0):
+            r, g, b = self._grad(pos)
+            grad.add_color_stop_rgb(pos, r, g, b)
+        cr.set_source(grad)
+        cr.paint()
+
+        # cuadritos: versión apenas más clara / más oscura del color local
+        cell, sq, k = self.CELL, self.SQUARE, self.TEXTURE
         off = (cell - sq) / 2
         cols = w // cell
         rows = h // cell + 1
+        white, black = (1, 1, 1), (0, 0, 0)
 
         for ix in range(self.EDGE_CELLS, cols - self.EDGE_CELLS + 1):
             x = ix * cell
+            base = self._grad((x + cell / 2) / w)
+            ca = self._mix(base, white, k)
+            cb = self._mix(base, black, k)
             for iy in range(rows):
-                if (ix + iy) % 2 == 0:
-                    c.set_source_rgba(1, 1, 1, 0.10)   # aclara el color local
-                else:
-                    c.set_source_rgba(0, 0, 0, 0.10)   # lo oscurece
-                c.rectangle(x + off, iy * cell + off, sq, sq)
-                c.fill()
+                r, g, b = ca if (ix + iy) % 2 == 0 else cb
+                cr.set_source_rgb(r, g, b)
+                cr.rectangle(x + off, iy * cell + off, sq, sq)
+                cr.fill()
 
-        self._tex = surf
-        self._tex_key = key
         return surf
 
 
