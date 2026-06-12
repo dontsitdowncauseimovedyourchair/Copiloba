@@ -1378,8 +1378,8 @@ class CarPlayWindow(Gtk.Window):
         btn_music  = Gtk.Button()
         pixmusic = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/music.png",
-            60,
-            60,
+            70,
+            70,
             True            
         )
         btn_music.set_image(
@@ -1389,8 +1389,8 @@ class CarPlayWindow(Gtk.Window):
         btn_cam    = Gtk.Button()
         pixcam = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/camera.png",
-            60,
-            60,     
+            70,
+            70,     
             True       
         )
         btn_cam.set_image(
@@ -1400,8 +1400,8 @@ class CarPlayWindow(Gtk.Window):
         btn_map    = Gtk.Button()
         pixmap = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/map.png",
-            60,
-            60, 
+            70,
+            70, 
             True
         )
         btn_map.set_image(
@@ -1411,8 +1411,8 @@ class CarPlayWindow(Gtk.Window):
         btn_mic = Gtk.Button()
         pixmic = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/copiloba.png",
-            60,
-            60,
+            70,
+            70,
             True
         )
         btn_mic.set_image(
