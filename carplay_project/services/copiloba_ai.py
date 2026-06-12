@@ -21,11 +21,11 @@ class CopilobaAssistant:
 
     def _listen_and_ask_worker(self):
         """This runs in the background so the dashboard doesn't freeze."""
-        self._update_ui("🎤 Escuchando... (6s)")
+        self._update_ui("Háblale a Copiloba... (6s)")
 
         # 1. Record audio
         os.system(f"arecord -D plughw:1,0 -c 2 -d 6 -f S16_LE -r 16000 {AUDIO_FILE}")
-        self._update_ui("📡 Enviando a Copiloba...")
+        self._update_ui("Pensando Lobamente...")
 
         # 2. Send to Server
         try:
@@ -34,7 +34,7 @@ class CopilobaAssistant:
                 response = requests.post(SERVER_URL, files=files, stream=True)
 
                 if response.status_code == 200:
-                    self._update_ui("🔊 Copiloba está hablando...")
+                    self._update_ui("Loba Loba")
 
                     # 3. Play audio
                     play_process = subprocess.Popen(
@@ -49,12 +49,12 @@ class CopilobaAssistant:
                     play_process.stdin.close()
                     play_process.wait()
 
-                    self._update_ui("✅ Listo")  # Reset UI when done
+                    self._update_ui("")  # Reset UI when done
                 else:
-                    self._update_ui(f"❌ Error del servidor: {response.status_code}")
+                    self._update_ui(f"Flop del servidor: {response.status_code}")
 
         except Exception as e:
-            self._update_ui("❌ Error de conexión")
+            self._update_ui("Flop de conexión a copiloba")
             print(f"Connection Error: {e}")
 
     def trigger_assistant(self):
