@@ -267,7 +267,7 @@ class MusicGradientBG(Gtk.DrawingArea):
 
         stripe_w = w / (len(colors) - 1)
 
-        pixel = 6
+        pixel = 12
 
         for x in range(0, w, pixel):
 
@@ -289,24 +289,33 @@ class MusicGradientBG(Gtk.DrawingArea):
             g = c1[1] + (c2[1]-c1[1]) * local_t
             b = c1[2] + (c2[2]-c1[2]) * local_t
 
+        for x in range(0, w, pixel):
             for y in range(0, h, pixel):
 
                 if ((x//pixel)+(y//pixel)) % 2 == 0:
-                    factor = 1.15
+
+                    cr.set_source_rgba(
+                        1,
+                        1,
+                        1,
+                        0.12
+                    )
+
                 else:
-                    factor = 0.85
 
-                cr.set_source_rgb(
-                    min(1, r/255*factor),
-                    min(1, g/255*factor),
-                    min(1, b/255*factor)
-                )
+                    cr.set_source_rgba(
+                        0,
+                        0,
+                        0,
+                        0.12
+                    )
 
-                cr.rectangle(
-                    x,
-                    y,
-                    pixel,
-                    pixel
+                cr.arc(
+                    x + pixel/2,
+                    y + pixel/2,
+                    pixel * 0.25,
+                    0,
+                    math.pi * 2
                 )
 
                 cr.fill()
