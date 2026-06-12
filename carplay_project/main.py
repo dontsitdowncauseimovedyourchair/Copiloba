@@ -1308,7 +1308,10 @@ class CarPlayWindow(Gtk.Window):
         self.add(self.global_overlay)
 
         # 1. Initialize the AI Assistant
-        self.ai_assistant = CopilobaAssistant(status_callback=self.update_ai_status)
+        self.ai_assistant = CopilobaAssistant(
+            status_callback=self.update_ai_status,
+            command_callback=self.execute_command,
+        )
 
         # 2. Create the floating AI Status Label
         self.ai_status_label = Gtk.Label(label="")
