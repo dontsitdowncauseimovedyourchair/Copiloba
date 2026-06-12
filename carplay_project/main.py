@@ -857,34 +857,33 @@ class HomeSpotifyCard(Gtk.Box):
 
         
         btn_vol_down = Gtk.Button()
+
         pix_vol_down = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/lessvolume.png",
             45,
             45,
             True
         )
-        img_vol_down = Gtk.Image.new_from_pixbuf(pix_vol_down)
+
         btn_vol_down.set_image(
             Gtk.Image.new_from_pixbuf(pix_vol_down)
         )
-        
+
         btn_vol_up = Gtk.Button()
+
         pix_vol_up = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/morevolume.png",
             45,
-            45, 
+            45,
             True
         )
-        img_vol_up = Gtk.Image.new_from_pixbuf(pix_vol_up)
+
         btn_vol_up.set_image(
-            Gtk.Image.new_from_pixbuf(img_vol_up)
+            Gtk.Image.new_from_pixbuf(pix_vol_up)
         )
 
-        btn_vol_down.set_image(img_vol_down)
-        btn_vol_up.set_image(img_vol_up)
-
-        btn_vol_down.get_style_context().add_class("circle-button")
-        btn_vol_up.get_style_context().add_class("circle-button")
+        btn_vol_down.get_style_context().add_class("transport-button")
+        btn_vol_up.get_style_context().add_class("transport-button")
 
         btn_vol_down.connect(
             "clicked",
