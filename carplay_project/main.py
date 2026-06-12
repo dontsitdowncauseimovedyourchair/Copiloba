@@ -1291,13 +1291,18 @@ class CarPlayWindow(Gtk.Window):
             print("Bluetooth sink error:", e)
 
         try:
-            self.librespot = subprocess.Popen([
-                "/home/root/librespot",
-                "--name",
-                "Copiloba"
-            ])
+            
+            already = subprocess.run(["pgrep", "-x", "librespot"],
+                                     capture_output=True).returncode == 0
+            if not already:
+                self.librespot = subprocess.Popen([
+                    "/home/root/librespot",
+                    "--name", "Copiloba",
+                    "--cache", "/home/root/.cache/librespot",
+                ])
         except Exception as e:
             print("Librespot error:", e)
+
 
         self.fullscreen()
 
@@ -1611,5 +1616,7 @@ if __name__ == "__main__":
     load_all_css()
     win = CarPlayWindow()
     win.connect("destroy", Gtk.main_quit)
+    win = CarPlayWindow()
+    win.connect("destroy", win.on_destroy)   # antes: Gtk.main_quit
     win.show_all()
     Gtk.main()
