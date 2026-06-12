@@ -902,6 +902,8 @@ class HomeSpotifyCard(Gtk.Box):
         left.pack_start(self.progress,   False, False, 0)
         left.pack_start(controls,        False, False, 0)
 
+        self.pack_start(left, True, True, 0)
+
 
     def update_progress(self, fraction):
         self.progress.set_fraction(fraction)
@@ -913,6 +915,7 @@ class HomeSpotifyCard(Gtk.Box):
     def update_cover(self, pixbuf):
         print(pixbuf)
         self.cover.set_from_pixbuf(pixbuf)
+
 
 
 # ─────────────────────────────────────────────
@@ -946,7 +949,7 @@ class MusicScreen(Gtk.Overlay):
         sidebar.get_style_context().add_class("sidebar-music")
         volume_widget = VolumeWidget()
         fixed.put(volume_widget, 1050, 20)
-
+        
         btn_back = Gtk.Button()
         img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/home.png")
         btn_back.set_image(img)
@@ -1203,8 +1206,6 @@ class CarPlayWindow(Gtk.Window):
         except Exception as e:
             print("Librespot error:", e)
 
-
-        
         self.fullscreen()
         self.stack = Gtk.Stack()
         self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
