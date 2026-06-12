@@ -243,7 +243,11 @@ class MusicGradientBG(Gtk.DrawingArea):
 
         for r, g, b in palette:
 
-            if abs(r-g) < 20 and abs(g-b) < 20:
+            # quitar blancos y grises
+            if abs(r-g) < 25 and abs(g-b) < 25:
+                continue
+
+            if (r + g + b) / 3 > 210:
                 continue
 
             filtered.append((r, g, b))
@@ -260,58 +264,61 @@ class MusicGradientBG(Gtk.DrawingArea):
         w = self.get_allocated_width()
         h = self.get_allocated_height()
 
-        pixel = 14
-
-        if len(self.colors) < 3:
-            return False
+        pixel = 12
 
         c1 = self.colors[0]
         c2 = self.colors[1]
         c3 = self.colors[2]
 
         for x in range(0, w, pixel):
+            for y in range(0, h, pixel):
 
-            t = x / w
+                t = x / w
 
-            if t < 0.25:
-                current = c1
+                # COLOR 1
+                if t < 0.30:
+                    color = c1
 
-            elif t < 0.40:
+                # DITHER 1-2
+                elif t < 0.40:
 
-                if ((x // pixel) % 2):
-                    current = c1
+                    if ((x // pixel) + (y // pixel)) % 2:
+                        color = c1
+                    else:
+                        color = c2
+
+                # COLOR 2
+                elif t < 0.60:
+                    color = c2
+
+                # DITHER 2-3
+                elif t < 0.70:
+
+                    if ((x // pixel) + (y // pixel)) % 2:
+                        color = c2
+                    else:
+                        color = c3
+
+                # COLOR 3
                 else:
-                    current = c2
+                    color = c3
 
-            elif t < 0.60:
-                current = c2
+                r, g, b = color
 
-            elif t < 0.75:
+                cr.set_source_rgb(
+                    r / 255,
+                    g / 255,
+                    b / 255
+                )
 
-                if ((x // pixel) % 2):
-                    current = c2
-                else:
-                    current = c3
+                cr.rectangle(
+                    x,
+                    y,
+                    pixel,
+                    pixel
+                )
 
-            else:
-                current = c3
-
-            r, g, b = current
-
-            cr.set_source_rgb(
-                r / 255,
-                g / 255,
-                b / 255
-            )
-
-            cr.rectangle(
-                x,
-                0,
-                pixel,
-                h
-            )
-
-            cr.fill()
+                cr.fill()
 
         return False
 # ─────────────────────────────────────────────
