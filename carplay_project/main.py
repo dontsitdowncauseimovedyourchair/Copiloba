@@ -892,22 +892,37 @@ class HomeSpotifyCard(Gtk.Box):
         )
 
         btn_prev = Gtk.Button()
-        prev_img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/rewind.png")
-        #ajustar tamaño de la imagen
-        prev_img.set_size_request(20, 20)
-        btn_prev.set_image(prev_img)
+        pix = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/rewind.png",
+            32,
+            32,
+            True
+        )
+
+        btn_prev.set_image(
+            Gtk.Image.new_from_pixbuf(pix)
+        )
 
         btn_play = Gtk.Button()
-        play_img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/play.png")
-        #ajustar tamaño de la imagen
-        play_img.set_size_request(20, 20)
-        btn_play.set_image(play_img)
-
+        play_pix = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/play.png",
+            32,
+            32,
+            True
+        )   
+        btn_play.set_image(
+            Gtk.Image.new_from_pixbuf(play_pix)
+        )
         btn_next = Gtk.Button()
-        next_img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/next.png")
-        #ajustar tamaño de la imagen
-        next_img.set_size_request(20, 20)
-        btn_next.set_image(next_img)
+        next_pix = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/next.png",
+            32,
+            32,
+            True
+        )
+        btn_next.set_image(
+            Gtk.Image.new_from_pixbuf(next_pix)
+        )
 
 
         btn_prev.get_style_context().add_class("transport-button")
