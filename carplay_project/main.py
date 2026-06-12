@@ -1202,9 +1202,13 @@ class CameraScreen(Gtk.Overlay):
         video_widget = sink.get_property("widget")
         self.add(video_widget)
 
+
         btn_home = Gtk.Button()
-        img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/home.png")
-        btn_home.set_image(img)
+        pix = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/home.png", 50, 50, True)
+        img = Gtk.Image.new_from_pixbuf(pix)
+        btn_home.set_image(
+            Gtk.Image.new_from_pixbuf(pix)
+        )
         btn_home.set_halign(Gtk.Align.START)
         btn_home.set_valign(Gtk.Align.START)
         btn_home.set_margin_start(20)
@@ -1370,8 +1374,8 @@ class CarPlayWindow(Gtk.Window):
         btn_music  = Gtk.Button()
         pixmusic = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/music.png",
-            42,
-            42,
+            60,
+            60,
             True            
         )
         btn_music.set_image(
@@ -1381,8 +1385,8 @@ class CarPlayWindow(Gtk.Window):
         btn_cam    = Gtk.Button()
         pixcam = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/camera.png",
-            42,
-            42,     
+            60,
+            60,     
             True       
         )
         btn_cam.set_image(
@@ -1392,8 +1396,8 @@ class CarPlayWindow(Gtk.Window):
         btn_map    = Gtk.Button()
         pixmap = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/map.png",
-            42,
-            42, 
+            60,
+            60, 
             True
         )
         btn_map.set_image(
@@ -1403,16 +1407,23 @@ class CarPlayWindow(Gtk.Window):
         btn_mic = Gtk.Button()
         pixmic = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/copiloba.png",
-            42,
-            42,
+            60,
+            60,
             True
         )
         btn_mic.set_image(
             Gtk.Image.new_from_pixbuf(pixmic)
         )
 
+        btn_music.get_style_context().add_class("dock-button")
+        btn_cam.get_style_context().add_class("dock-button")
+        btn_map.get_style_context().add_class("dock-button")
+        btn_mic.get_style_context().add_class("dock-button")
+
         for b in [btn_music, btn_cam, btn_map, btn_mic]:
             dock.pack_start(b, False, False, 0)
+
+
 
         btn_music.connect("clicked", lambda x: self.navigate("music"))
         btn_cam.connect(  "clicked", lambda x: self.navigate("camera"))
