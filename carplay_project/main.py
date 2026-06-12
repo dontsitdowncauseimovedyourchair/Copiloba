@@ -2,7 +2,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gst", "1.0")
 gi.require_version("OsmGpsMap", "1.0")
-from gi.repository import Gtk, Gdk, GLib, Gst, OsmGpsMap
+from gi.repository import Gtk, Gdk, GLib, Gst, OsmGpsMap, Pango
 import cairo
 import math
 import os
@@ -17,6 +17,8 @@ import requests
 from gi.repository import GdkPixbuf
 import random
 import threading
+from PIL import Image
+import subprocess
 
 # ─────────────────────────────────────────────
 # 1. ESTILOS CSS
@@ -29,12 +31,15 @@ def load_all_css():
         r, g, b = 105, 17, 173  # Morado #6911AD
     dark_r, dark_g, dark_b = max(r - 70, 0), max(g - 70, 0), max(b - 70, 0)
     css = f"""
+    * {{
+        font-family: "Pixel Operator";
+    }}
     .music-background {{
         background-image: linear-gradient(135deg, rgba({r},{g},{b},0.95),
         rgba({dark_r},{dark_g},{dark_b},0.95));
     }}
-    .sidebar-music {{ background: transparent; border-radius: 30px; padding: 20px; }}
-    .dashboard-music {{ background: rgba(255,255,255,0.1); border-radius: 40px; padding: 30px; }}
+    .sidebar-music {{ background: transparent; border-radius: 0px; padding: 20px; }}
+    .dashboard-music {{ background: rgba(255,255,255,0.1); border-radius: 0px; padding: 30px; }}
     .clock-label {{ color: white; font-size: 80px; font-weight: 900; }}
 
     .dock-button {{
@@ -48,28 +53,39 @@ def load_all_css():
     }}
     .circle-button {{
         background: rgba(255,255,255,0.1);
-        border-radius: 999px;
+        border-radius: 0px;
         min-width: 80px; min-height: 80px;
         font-size: 30px; color: white; border: none;
     }}
     .date-label {{
         color: rgba(255,255,255,0.75);
-        font-size: 20px;
+        font-size: 50px;
         font-weight: 500;
     }}
     .clock-label {{
         color: white;
-        font-size: 72px;
+        font-family: "Pixel Operator HB 8";
+        font-size: 120px;
         font-weight: 900;
     }}
     .hero-song {{
-        font-size: 42px;
+        font-size: 70px;
         font-weight: 900;
         color: white;
     }}
     .hero-artist {{
-        font-size: 22px;
+        font-size: 50px;
         color: rgba(255,255,255,0.75);
+    }}
+    .home-song {{
+        font-size: 40px;
+        font-weight: 700;
+        color: white;
+    }}
+
+    .home-artist {{
+        font-size: 30px;
+        color: rgba(255,255,255,0.7);
     }}
     .transport-button {{
         background: transparent;
@@ -81,8 +97,8 @@ def load_all_css():
         min-width: 80px;
     }}
     .floating-dock {{
-        background: rgba(255,255,255,0.12);
-        border-radius: 35px;
+        background: rgba(255,255,255,0.20);
+        border-radius: 0px;
         padding: 14px 28px;
     }}
     .dock-button {{
@@ -92,29 +108,29 @@ def load_all_css():
         padding: 12px;
     }}
     .dock-button:hover {{
-        background: rgba(255,255,255,0.12);
-        border-radius: 18px;
+        background: rgba(255,255,255,0.25);
+        border-radius: 0px;
     }}
 
     /* Temperature widget */
     .temp-card {{
         background: rgba(255,255,255,0.12);
-        border-radius: 24px;
+        border-radius: 0px;
         padding: 16px 22px;
     }}
     .temp-value {{
         color: white;
-        font-size: 36px;
+        font-size: 60px;
         font-weight: 900;
     }}
     .temp-label {{
         color: rgba(255,255,255,0.70);
-        font-size: 14px;
+        font-size: 30px;
         font-weight: 500;
     }}
     .temp-city {{
         color: rgba(255,255,255,0.85);
-        font-size: 16px;
+        font-size: 30px;
         font-weight: 600;
     }}
     """
@@ -212,34 +228,76 @@ class MusicGradientBG(Gtk.DrawingArea):
         self.connect("draw", self._draw)
 
     def set_palette(self, palette):
-        boosted = []
+
+        filtered = []
+
         for r, g, b in palette:
+
+            # Ignorar grises
+            if abs(r - g) < 25 and abs(g - b) < 25:
+                continue
+
+            # Ignorar colores demasiado claros
+            brightness = (r + g + b) / 3
+
+            if brightness > 220:
+                continue
+
+            filtered.append((r, g, b))
+
+        if not filtered:
+            filtered = palette
+
+        boosted = []
+
+        for r, g, b in filtered:
+
             boosted.append((
-                min(255, int(r * 1.6)),
-                min(255, int(g * 1.6)),
-                min(255, int(b * 1.6)),
+                min(255, int(r * 1.8)),
+                min(255, int(g * 1.8)),
+                min(255, int(b * 1.8))
             ))
+
         self.colors = boosted
         self.queue_draw()
 
     def _draw(self, widget, cr):
         w = self.get_allocated_width()
         h = self.get_allocated_height()
-        cr.set_source_rgb(0.10, 0.08, 0.15)
-        cr.paint()
-        t = 0
-        for i, color in enumerate(self.colors):
-            r, g, b = color
-            x = w * 0.2 + i * 200 + math.sin(t + i) * 120
-            y = h * 0.5 + math.cos(t * 0.7 + i) * 80
-            grad = cairo.RadialGradient(x, y, 0, x, y, 700)
-            grad.add_color_stop_rgba(0, r / 255, g / 255, b / 255, 0.85)
-            grad.add_color_stop_rgba(1, r / 255, g / 255, b / 255, 0)
-            cr.set_source(grad)
-            cr.paint()
+
+        if not self.colors:
+            return False
+
+        r, g, b = self.colors[0]
+
+        levels = [
+            1.00,
+            0.85,
+            0.70,
+            0.55,
+            0.40
+        ]
+
+        band_h = h / len(levels)
+
+        for i, factor in enumerate(levels):
+
+            cr.set_source_rgb(
+                (r * factor) / 255,
+                (g * factor) / 255,
+                (b * factor) / 255
+            )
+
+            cr.rectangle(
+                0,
+                i * band_h,
+                w,
+                band_h + 2
+            )
+
+            cr.fill()
+
         return False
-
-
 # ─────────────────────────────────────────────
 # 3. TEMPERATURA WIDGET
 # ─────────────────────────────────────────────
@@ -255,13 +313,33 @@ class TemperatureWidget(Gtk.Box):
 
     # WMO weather code → emoji
     WMO_ICONS = {
-        0: "☀️", 1: "🌤", 2: "⛅", 3: "☁️",
-        45: "🌫", 48: "🌫",
-        51: "🌦", 53: "🌦", 55: "🌧",
-        61: "🌧", 63: "🌧", 65: "🌧",
-        71: "🌨", 73: "🌨", 75: "❄️",
-        80: "🌦", 81: "🌧", 82: "⛈",
-        95: "⛈", 96: "⛈", 99: "⛈",
+        0: "/home/root/media/weather/sun.png",
+        1: "/home/root/media/weather/partly_cloudy.png",
+        2: "/home/root/media/weather/cloudy.png",
+        3: "/home/root/media/weather/cloud.png",
+
+        45: "/home/root/media/weather/fog.png",
+        48: "/home/root/media/weather/fog.png",
+
+        51: "/home/root/media/weather/rain.png",
+        53: "/home/root/media/weather/rain.png",
+        55: "/home/root/media/weather/rain.png",
+
+        61: "/home/root/media/weather/rain.png",
+        63: "/home/root/media/weather/rain.png",
+        65: "/home/root/media/weather/rain.png",
+
+        71: "/home/root/media/weather/snow.png",
+        73: "/home/root/media/weather/snow.png",
+        75: "/home/root/media/weather/snow.png",
+
+        80: "/home/root/media/weather/rain.png",
+        81: "/home/root/media/weather/rain.png",
+        82: "/home/root/media/weather/storm.png",
+
+        95: "/home/root/media/weather/storm.png",
+        96: "/home/root/media/weather/storm.png",
+        99: "/home/root/media/weather/storm.png",
     }
 
     def __init__(self):
@@ -273,8 +351,7 @@ class TemperatureWidget(Gtk.Box):
         top_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         top_row.set_halign(Gtk.Align.CENTER)
 
-        self.lbl_icon = Gtk.Label(label="🌡")
-        self.lbl_icon.set_markup('<span font="28">🌡</span>')
+        self.lbl_icon = Gtk.Image()
 
         self.lbl_temp = Gtk.Label(label="--°C")
         self.lbl_temp.get_style_context().add_class("temp-value")
@@ -324,15 +401,27 @@ class TemperatureWidget(Gtk.Box):
 
     def _update_ui(self, temp, icon, code):
         if temp is not None:
+
             self.lbl_temp.set_text(f"{temp}°C")
-            self.lbl_icon.set_markup(f'<span font="28">{icon}</span>')
-            desc = self._code_to_desc(code)
-            self.lbl_desc.set_text(desc)
+
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                icon,
+                96,
+                96,
+                True
+            )
+
+            self.lbl_icon.set_from_pixbuf(pixbuf)
+
+            self.lbl_desc.set_text(
+                self._code_to_desc(code)
+            )
+
         else:
             self.lbl_temp.set_text("--°C")
             self.lbl_desc.set_text("Sin conexión")
-        return False
 
+        return False
     @staticmethod
     def _code_to_desc(code):
         mapping = {
@@ -739,25 +828,58 @@ class MapScreen(Gtk.Overlay):
 class HomeSpotifyCard(Gtk.Box):
     def __init__(self):
         super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=25)
-        self.set_size_request(650, 320)
+        self.set_size_request(100, 720)
+        self.set_hexpand(False)
+        self.set_vexpand(False)
         self.get_style_context().add_class("dashboard-music")
 
         self.cover = Gtk.Image()
-        self.pack_start(self.cover, False, False, 20)
+        self.cover.set_size_request(50, 50)
 
-        right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=15)
+        left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
 
         self.lbl_song = Gtk.Label(label="No music playing")
-        self.lbl_song.get_style_context().add_class("hero-song")
+        self.lbl_song.get_style_context().add_class("home-song")
         self.lbl_song.set_xalign(0)
 
         self.lbl_artist = Gtk.Label(label="")
-        self.lbl_artist.get_style_context().add_class("hero-artist")
+        self.lbl_artist.get_style_context().add_class("home-artist")
         self.lbl_artist.set_xalign(0)
 
         self.progress = Gtk.ProgressBar()
 
         controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=20)
+
+        volume_controls = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=10
+        )
+        btn_vol_down = Gtk.Button(label="-")
+        btn_vol_up = Gtk.Button(label="+")
+
+        btn_vol_down.connect(
+            "clicked",
+            self.volume_down
+        )
+
+        btn_vol_up.connect(
+            "clicked",
+            self.volume_up
+        )
+
+        volume_controls.pack_start(
+            btn_vol_down,
+            False,
+            False,
+            0
+        )
+
+        volume_controls.pack_start(
+            btn_vol_up,
+            False,
+            False,
+            0
+        )
 
         btn_prev = Gtk.Button()
         prev_img = Gtk.Image.new_from_file("/home/root/media/rewind.png")
@@ -771,15 +893,67 @@ class HomeSpotifyCard(Gtk.Box):
         next_img = Gtk.Image.new_from_file("/home/root/media/next.png")
         btn_next.set_image(next_img)
 
+        btn_vol_down = Gtk.Button(label="-")
+        btn_vol_up = Gtk.Button(label="+")
+
+        btn_prev.get_style_context().add_class("transport-button")
+        btn_play.get_style_context().add_class("transport-button")
+        btn_next.get_style_context().add_class("transport-button")
+
         controls.pack_start(btn_prev, False, False, 0)
         controls.pack_start(btn_play, False, False, 0)
         controls.pack_start(btn_next, False, False, 0)
 
-        right.pack_start(self.lbl_song,   False, False, 0)
-        right.pack_start(self.lbl_artist, False, False, 0)
-        right.pack_start(self.progress,   False, False, 0)
-        right.pack_start(controls,        False, False, 0)
-        self.pack_start(right, True, True, 0)
+        left.pack_start(self.cover, False, False, 0)
+        left.pack_start(self.lbl_song,   False, False, 0)
+        left.pack_start(self.lbl_artist, False, False, 0)
+        left.pack_start(self.progress,   False, False, 0)
+        left.pack_start(controls,        False, False, 0)
+        left.pack_start(
+            volume_controls,
+            False,
+            False,
+            0
+        )
+        self.pack_start(left, True, True, 0)
+        volume_controls = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=10
+        )
+
+        btn_vol_down = Gtk.Button(label="-")
+        btn_vol_up = Gtk.Button(label="+")
+
+        btn_vol_down.connect(
+            "clicked",
+            self.volume_down
+        )
+
+        btn_vol_up.connect(
+            "clicked",
+            self.volume_up
+        )
+
+        volume_controls.pack_start(
+            btn_vol_down,
+            False,
+            False,
+            0
+        )
+
+        volume_controls.pack_start(
+            btn_vol_up,
+            False,
+            False,
+            0
+        )
+
+        left.pack_start(
+            volume_controls,
+            False,
+            False,
+            0
+        )
 
     def update_progress(self, fraction):
         self.progress.set_fraction(fraction)
@@ -789,7 +963,24 @@ class HomeSpotifyCard(Gtk.Box):
         self.lbl_artist.set_text(artist)
 
     def update_cover(self, pixbuf):
+        print(pixbuf)
         self.cover.set_from_pixbuf(pixbuf)
+
+    def volume_up(self, widget):
+        subprocess.run([
+            "wpctl",
+            "set-volume",
+            "@DEFAULT_AUDIO_SINK@",
+            "5%+"
+        ])
+
+    def volume_down(self, widget):
+        subprocess.run([
+            "wpctl",
+            "set-volume",
+            "@DEFAULT_AUDIO_SINK@",
+            "5%-"
+        ])
 
 
 # ─────────────────────────────────────────────
@@ -815,12 +1006,8 @@ class MusicScreen(Gtk.Overlay):
         self.music_bg = MusicGradientBG()
         self.add(self.music_bg)
 
-        content = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=30)
-        content.set_margin_top(40)
-        content.set_margin_bottom(40)
-        content.set_margin_start(40)
-        content.set_margin_end(40)
-        self.add_overlay(content)
+        fixed = Gtk.Fixed()
+        self.add_overlay(fixed)
 
         # Sidebar
         sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -843,6 +1030,7 @@ class MusicScreen(Gtk.Overlay):
         try:
             pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale("album.jpg", 320, 320, True)
             self.album_image.set_from_pixbuf(pixbuf)
+            
         except Exception:
             pass
 
@@ -862,7 +1050,7 @@ class MusicScreen(Gtk.Overlay):
             (self.btn_play, "/home/root/media/play.png"),
             (self.btn_next, "/home/root/media/next.png"),
         ]:
-            pix = GdkPixbuf.Pixbuf.new_from_file_at_scale(path, 48, 48, True)
+            pix = GdkPixbuf.Pixbuf.new_from_file_at_scale(path,80, 80, True)
             btn.set_image(Gtk.Image.new_from_pixbuf(pix))
             btn.get_style_context().add_class("transport-button")
 
@@ -874,31 +1062,58 @@ class MusicScreen(Gtk.Overlay):
         self.btn_play.connect("clicked", self.toggle_play)
         self.btn_next.connect("clicked", self.next_track)
 
-        center.pack_start(self.album_image, False, False, 0)
-        center.pack_start(self.lbl_song,    False, False, 0)
-        center.pack_start(self.lbl_art,     False, False, 0)
-        center.pack_start(controls,         False, False, 0)
+        fixed.put(sidebar, 0, 0)
 
-        content.pack_start(sidebar, False, False, 0)
-        content.pack_start(center,  True,  True,  0)
+        fixed.put(self.album_image, 150, 160)
+        fixed.put(self.lbl_song, 600, 200)
+        fixed.put(self.lbl_art, 600, 330)
+        fixed.put(controls, 700, 450)
 
         self.update_spotify()
         GLib.timeout_add(2000, self.update_spotify)
+
+    def pixelate_album(self, input_path, output_path):
+        img = Image.open(input_path)
+
+        small = img.resize(
+            (32, 32),
+            Image.NEAREST
+        )
+
+        pixel = small.resize(
+            img.size,
+            Image.NEAREST
+        )
+
+        pixel.save(output_path)
 
     def update_album_art(self, url):
         try:
             response = requests.get(url, timeout=10)
             with open("current_album.jpg", "wb") as f:
                 f.write(response.content)
+
+            self.pixelate_album(
+                "current_album.jpg",
+                "current_album_pixel.jpg"
+            )
             try:
                 color_thief = ColorThief("current_album.jpg")
                 palette = color_thief.get_palette(color_count=6)
                 self.music_bg.set_palette([palette[0], palette[1], palette[2], palette[3]])
             except Exception as e:
                 print("ColorThief error:", e)
-            pixbuf = GdkPixbuf.Pixbuf.new_from_file("current_album.jpg")
-            pixbuf = pixbuf.scale_simple(280, 280, GdkPixbuf.InterpType.BILINEAR)
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file("current_album_pixel.jpg")
+            pixbuf = pixbuf.scale_simple(410, 410, GdkPixbuf.InterpType.NEAREST)
             self.album_image.set_from_pixbuf(pixbuf)
+
+            home_pixbuf = pixbuf.scale_simple(
+                300,
+                300,
+                GdkPixbuf.InterpType.NEAREST
+            )
+            self.home_card.update_cover(home_pixbuf)
+
         except Exception as e:
             print("Album art error:", e)
 
@@ -1011,7 +1226,7 @@ class CameraScreen(Gtk.Overlay):
 # ─────────────────────────────────────────────
 class ClockWidget(Gtk.Box):
     def __init__(self):
-        Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL, spacing=5)
+        Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL, spacing=30)
         self.lbl_date  = Gtk.Label()
         self.lbl_clock = Gtk.Label()
         self.lbl_date.set_xalign(0.5)
@@ -1036,6 +1251,24 @@ class ClockWidget(Gtk.Box):
 class CarPlayWindow(Gtk.Window):
     def __init__(self):
         super().__init__(title="CarPlay OS")
+        try:
+            subprocess.run([
+                "pactl",
+                "set-default-sink",
+                "bluez_output.54_71_DD_B5_AB_B2.1"
+            ])
+        except Exception as e:
+            print("Bluetooth sink error:", e)
+
+        try:
+            self.librespot = subprocess.Popen([
+                "/home/root/librespot",
+                "--name",
+                "Copiloba"
+            ])
+        except Exception as e:
+            print("Librespot error:", e)
+
         self.fullscreen()
         self.stack = Gtk.Stack()
         self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
@@ -1066,18 +1299,18 @@ class CarPlayWindow(Gtk.Window):
 
         # Clock — top-right area
         clock = ClockWidget()
-        fixed.put(clock, 430, 40)
+        fixed.put(clock, 550, 230)
 
         # Spotify card
         self.home_card = HomeSpotifyCard()
-        fixed.put(self.home_card, 30, 130)
+        fixed.put(self.home_card, 0, 0)
 
         # Temperature widget — top-left
         self.temp_widget = TemperatureWidget()
-        fixed.put(self.temp_widget, 30, 40)
+        fixed.put(self.temp_widget, 30, 500)
 
         # Dock — bottom-center
-        dock = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=60)
+        dock = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
         dock.get_style_context().add_class("floating-dock")
 
         def create_icon_button(path):
@@ -1103,7 +1336,7 @@ class CarPlayWindow(Gtk.Window):
         btn_cam.connect(  "clicked", lambda x: self.navigate("camera"))
         btn_map.connect(  "clicked", lambda x: self.navigate("map"))
 
-        fixed.put(dock, 250, 530)
+        fixed.put(dock, 600, 530)
 
         overlay.add_overlay(fixed)
         return overlay
@@ -1114,6 +1347,13 @@ class CarPlayWindow(Gtk.Window):
         else:
             self.camera_screen.stop_camera()
         self.stack.set_visible_child_name(name)
+
+    def on_destroy(self, widget):
+
+        if hasattr(self, "librespot"):
+            self.librespot.terminate()
+
+        Gtk.main_quit()
 
 
 # ─────────────────────────────────────────────
