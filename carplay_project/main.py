@@ -463,7 +463,7 @@ class TemperatureWidget(Gtk.Box):
 
         # Fetch on start, then every 10 minutes
         self._fetch_async()
-        GLib.timeout_add_seconds(600, self._fetch_async)
+        GLib.timeout_add_seconds(15, self._fetch_async)
 
     def _fetch_async(self):
         t = threading.Thread(target=self._fetch, daemon=True)
