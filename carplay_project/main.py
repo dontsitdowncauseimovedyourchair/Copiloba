@@ -91,7 +91,7 @@ def load_all_css():
         background: transparent;
         border: none;
         box-shadow: none;
-        font-size: 54px;
+        font-size: 20px;
         color: white;
         min-height: 80px;
         min-width: 80px;
