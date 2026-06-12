@@ -313,33 +313,33 @@ class TemperatureWidget(Gtk.Box):
 
     # WMO weather code → emoji
     WMO_ICONS = {
-        0: "/home/root/media/weather/sun.png",
-        1: "/home/root/media/weather/partly_cloudy.png",
-        2: "/home/root/media/weather/cloudy.png",
-        3: "/home/root/media/weather/cloud.png",
+        0: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/sun.png",
+        1: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/partly_cloudy.png",
+        2: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/cloudy.png",
+        3: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/cloud.png",
 
-        45: "/home/root/media/weather/fog.png",
-        48: "/home/root/media/weather/fog.png",
+        45: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/fog.png",
+        48: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/fog.png",
 
-        51: "/home/root/media/weather/rain.png",
-        53: "/home/root/media/weather/rain.png",
-        55: "/home/root/media/weather/rain.png",
+        51: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/rain.png",
+        53: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/rain.png",
+        55: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/rain.png",
 
-        61: "/home/root/media/weather/rain.png",
-        63: "/home/root/media/weather/rain.png",
-        65: "/home/root/media/weather/rain.png",
+        61: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/rain.png",
+        63: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/rain.png",
+        65: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/rain.png",
 
-        71: "/home/root/media/weather/snow.png",
-        73: "/home/root/media/weather/snow.png",
-        75: "/home/root/media/weather/snow.png",
+        71: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/snow.png",
+        73: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/snow.png",
+        75: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/snow.png",
 
-        80: "/home/root/media/weather/rain.png",
-        81: "/home/root/media/weather/rain.png",
-        82: "/home/root/media/weather/storm.png",
+        80: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/rain.png",
+        81: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/rain.png",
+        82: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/storm.png",
 
-        95: "/home/root/media/weather/storm.png",
-        96: "/home/root/media/weather/storm.png",
-        99: "/home/root/media/weather/storm.png",
+        95: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/storm.png",
+        96: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/storm.png",
+        99: "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/weather/storm.png",
     }
 
     def __init__(self):
@@ -596,7 +596,7 @@ class MapScreen(Gtk.Overlay):
         try:
 
             pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
-                "/home/root/media/home.png",
+                "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/home.png",
                 42,
                 42,
                 True
@@ -882,15 +882,15 @@ class HomeSpotifyCard(Gtk.Box):
         )
 
         btn_prev = Gtk.Button()
-        prev_img = Gtk.Image.new_from_file("/home/root/media/rewind.png")
+        prev_img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/rewind.png")
         btn_prev.set_image(prev_img)
 
         btn_play = Gtk.Button()
-        play_img = Gtk.Image.new_from_file("/home/root/media/play.png")
+        play_img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/play.png")
         btn_play.set_image(play_img)
 
         btn_next = Gtk.Button()
-        next_img = Gtk.Image.new_from_file("/home/root/media/next.png")
+        next_img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/next.png")
         btn_next.set_image(next_img)
 
         btn_vol_down = Gtk.Button(label="-")
@@ -1014,7 +1014,7 @@ class MusicScreen(Gtk.Overlay):
         sidebar.get_style_context().add_class("sidebar-music")
 
         btn_back = Gtk.Button()
-        img = Gtk.Image.new_from_file("/home/root/media/home.png")
+        img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/home.png")
         btn_back.set_image(img)
         btn_back.get_style_context().add_class("circle-button")
         btn_back.connect("clicked", lambda x: nav_callback("home"))
@@ -1046,9 +1046,9 @@ class MusicScreen(Gtk.Overlay):
         self.btn_next = Gtk.Button()
 
         for (btn, path) in [
-            (self.btn_prev, "/home/root/media/rewind.png"),
-            (self.btn_play, "/home/root/media/play.png"),
-            (self.btn_next, "/home/root/media/next.png"),
+            (self.btn_prev, "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/rewind.png"),
+            (self.btn_play, "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/play.png"),
+            (self.btn_next, "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/next.png"),
         ]:
             pix = GdkPixbuf.Pixbuf.new_from_file_at_scale(path,80, 80, True)
             btn.set_image(Gtk.Image.new_from_pixbuf(pix))
@@ -1181,7 +1181,7 @@ class CameraScreen(Gtk.Overlay):
         self.add(video_widget)
 
         btn_home = Gtk.Button()
-        img = Gtk.Image.new_from_file("/home/root/media/home.png")
+        img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/home.png")
         btn_home.set_image(img)
         btn_home.set_halign(Gtk.Align.START)
         btn_home.set_valign(Gtk.Align.START)
@@ -1322,11 +1322,11 @@ class CarPlayWindow(Gtk.Window):
             btn.get_style_context().add_class("dock-button")
             return btn
 
-        btn_home   = create_icon_button("/home/root/media/home.png")
-        btn_music  = create_icon_button("/home/root/media/music.png")
-        btn_cam    = create_icon_button("/home/root/media/camera.png")
+        btn_home   = create_icon_button("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/home.png")
+        btn_music  = create_icon_button("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/music.png")
+        btn_cam    = create_icon_button("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/camera.png")
         # Map button — uses your map.png icon
-        btn_map    = create_icon_button("/home/root/media/map.png")
+        btn_map    = create_icon_button("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/map.png")
 
         for b in [btn_home, btn_music, btn_cam, btn_map]:
             dock.pack_start(b, False, False, 0)
