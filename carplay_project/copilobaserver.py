@@ -1,3 +1,4 @@
+# Save this as: copiloba_server.py (Run this on your POWER PC)
 import subprocess
 import requests
 from flask import Flask, request, Response
@@ -18,7 +19,14 @@ def generate_audio_stream(prompt):
     # 1. Ask Ollama for the text response
     ollama_payload = {
         "model": "llama3",
-        "prompt": prompt,
+        "prompt": (
+            "Eres Copiloba, una asistente de vehículo. "
+            "¡Usa siempre signos de exclamación (¡!) en tus oraciones para sonar emocionada! "
+            "Sé muy breve, tu texto se transformará en audio. "
+            "Refiérete al conductor como 'Loba', nunca olvídes llamarle loba por lo menos una vez. "
+            "No siempre empieces tus respuestas diciendo 'Hola loba', varía."
+            f"El conductor dice: {prompt}"
+        ),
         "stream": False
     }
 
@@ -29,7 +37,14 @@ def generate_audio_stream(prompt):
 
     # 2. Run Piper directly (No shell=True, no 'echo')
     # We pass the arguments as a Python list. This is 100% safe on Windows.
-    piper_cmd = [PIPER_EXEC, "--model", VOICE_MODEL, "--output_raw"]
+    # 2. Run Piper directly with energetic pacing parameters
+    piper_cmd = [
+        PIPER_EXEC,
+        "--model", VOICE_MODEL,
+        "--output_raw",
+        "--length_scale", "0.82",  # Speeds up the voice (try 0.8 to 0.9)
+        "--sentence_silence", "0.1"  # Removes the long, awkward pauses between sentences
+    ]
 
     process = subprocess.Popen(
         piper_cmd,

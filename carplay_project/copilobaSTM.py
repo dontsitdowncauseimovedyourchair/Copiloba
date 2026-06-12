@@ -11,7 +11,7 @@ def ask_copiloba_voice(user_prompt):
     print(f"Sending audio transcription to Power PC: '{user_prompt}'")
 
     payload = {
-        "prompt": f"Eres Copiloba, una asistente muy loba dentro de un vehiculo embebido. Se breve, el conductor dice: {user_prompt}"
+        "prompt": f"{user_prompt}"
     }
 
     try:
@@ -48,4 +48,4 @@ def ask_copiloba_voice(user_prompt):
 
 # --- Test the System ---
 if __name__ == "__main__":
-    ask_copiloba_voice("Prende el spotify y el aire acondicionado.")
+    ask_copiloba_voice("LLevame al tec")
