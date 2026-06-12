@@ -854,8 +854,15 @@ class HomeSpotifyCard(Gtk.Box):
             orientation=Gtk.Orientation.HORIZONTAL,
             spacing=10
         )
-        btn_vol_down = Gtk.Button(label="-")
-        btn_vol_up = Gtk.Button(label="+")
+
+        
+        btn_vol_down = Gtk.Button()
+        vol_down_img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/lessvolume.png")
+        btn_vol_up = Gtk.Button()
+        vol_up_img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/morevolume.png")
+
+        btn_vol_down.set_image(vol_down_img)
+        btn_vol_up.set_image(vol_up_img)
 
         btn_vol_down.connect(
             "clicked",
@@ -893,8 +900,6 @@ class HomeSpotifyCard(Gtk.Box):
         next_img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/next.png")
         btn_next.set_image(next_img)
 
-        btn_vol_down = Gtk.Button(label="-")
-        btn_vol_up = Gtk.Button(label="+")
 
         btn_prev.get_style_context().add_class("transport-button")
         btn_play.get_style_context().add_class("transport-button")
@@ -920,9 +925,6 @@ class HomeSpotifyCard(Gtk.Box):
             orientation=Gtk.Orientation.HORIZONTAL,
             spacing=10
         )
-
-        btn_vol_down = Gtk.Button(label="-")
-        btn_vol_up = Gtk.Button(label="+")
 
         btn_vol_down.connect(
             "clicked",
