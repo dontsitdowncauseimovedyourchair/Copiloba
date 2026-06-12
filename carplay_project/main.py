@@ -901,48 +901,7 @@ class HomeSpotifyCard(Gtk.Box):
         left.pack_start(self.lbl_artist, False, False, 0)
         left.pack_start(self.progress,   False, False, 0)
         left.pack_start(controls,        False, False, 0)
-        left.pack_start(
-            volume_controls,
-            False,
-            False,
-            0
-        )
-        self.pack_start(left, True, True, 0)
-        volume_controls = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=10
-        )
 
-        btn_vol_down.connect(
-            "clicked",
-            self.volume_down
-        )
-
-        btn_vol_up.connect(
-            "clicked",
-            self.volume_up
-        )
-
-        volume_controls.pack_start(
-            btn_vol_down,
-            False,
-            False,
-            0
-        )
-
-        volume_controls.pack_start(
-            btn_vol_up,
-            False,
-            False,
-            0
-        )
-
-        left.pack_start(
-            volume_controls,
-            False,
-            False,
-            0
-        )
 
     def update_progress(self, fraction):
         self.progress.set_fraction(fraction)
@@ -954,22 +913,6 @@ class HomeSpotifyCard(Gtk.Box):
     def update_cover(self, pixbuf):
         print(pixbuf)
         self.cover.set_from_pixbuf(pixbuf)
-
-    def volume_up(self, widget):
-        subprocess.run([
-            "wpctl",
-            "set-volume",
-            "@DEFAULT_AUDIO_SINK@",
-            "5%+"
-        ])
-
-    def volume_down(self, widget):
-        subprocess.run([
-            "wpctl",
-            "set-volume",
-            "@DEFAULT_AUDIO_SINK@",
-            "5%-"
-        ])
 
 
 # ─────────────────────────────────────────────
