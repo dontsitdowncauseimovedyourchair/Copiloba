@@ -720,11 +720,7 @@ class MapScreen(Gtk.Overlay):
             0
         )
 
-        base.put(
-            ui_box,
-            20,
-            20
-        )
+        self.add_overlay(ui_box)
 
     # ====================================
     # HELPERS
