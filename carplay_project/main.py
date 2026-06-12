@@ -841,6 +841,10 @@ class HomeSpotifyCard(Gtk.Box):
         self.lbl_song = Gtk.Label(label="No music playing")
         self.lbl_song.get_style_context().add_class("home-song")
         self.lbl_song.set_xalign(0)
+        self.lbl_song.set_max_width_chars(18)
+        self.lbl_song.set_ellipsize(Pango.EllipsizeMode.END)
+        self.lbl_song.set_line_wrap(False)
+        self.lbl_song.set_size_request(180, -1)
 
         self.lbl_artist = Gtk.Label(label="")
         self.lbl_artist.get_style_context().add_class("home-artist")
@@ -873,8 +877,8 @@ class HomeSpotifyCard(Gtk.Box):
 
         pix_vol_up = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/morevolume.png",
-            45,
-            45,
+            50,
+            50,
             True
         )
 
