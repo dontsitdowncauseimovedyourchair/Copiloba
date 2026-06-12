@@ -226,16 +226,51 @@ class MainGradientBG(Gtk.DrawingArea):
 
 
 class MusicGradientBG(Gtk.DrawingArea):
+    CELL = 13        # tamaño de celda (cuadro + espacio)
+    SQUARE = 6       # tamaño del cuadrito
+    SHIFT = 0.085    # qué tanto se desplaza el color de los cuadritos
+    EDGE_CELLS = 2   # columnas sólidas en cada borde
+
     def __init__(self):
         super().__init__()
-        self.colors = [
-            (255, 80, 180),
-            (120, 70, 255),
-            (60, 180, 255),
-            (255, 180, 60),
-        ]
-        self.phase = 0
+        self._cache = None
+        self._cache_key = None
+        self._set_stops([(168, 12, 40), (250, 235, 120), (0, 150, 84)])
         self.connect("draw", self._draw)
+
+    # ---------- helpers ----------
+
+    @staticmethod
+    def _mix(c1, c2, t):
+        return tuple(c1[i] + (c2[i] - c1[i]) * t for i in range(3))
+
+    @staticmethod
+    def _luma(c):
+        return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+
+    def _set_stops(self, cols):
+        a, b, c = cols
+        white, black = (255, 255, 255), (0, 0, 0)
+        self.stops = [
+            (0.00, self._mix(a, black, 0.20)),
+            (0.18, tuple(a)),
+            (0.50, self._mix(b, white, 0.55)),   # centro brillante
+            (0.82, tuple(c)),
+            (1.00, self._mix(c, black, 0.20)),
+        ]
+        self._cache = None
+
+    def _grad(self, t):
+        t = max(0.0, min(1.0, t))
+        for i in range(len(self.stops) - 1):
+            p0, c0 = self.stops[i]
+            p1, c1 = self.stops[i + 1]
+            if t <= p1:
+                k = 0.0 if p1 == p0 else (t - p0) / (p1 - p0)
+                return self._mix(c0, c1, k)
+        return self.stops[-1][1]
+
+    # ---------- API ----------
 
     def set_palette(self, palette):
 
@@ -244,83 +279,76 @@ class MusicGradientBG(Gtk.DrawingArea):
         for r, g, b in palette:
 
             # quitar blancos y grises
-            if abs(r-g) < 25 and abs(g-b) < 25:
+            if abs(r - g) < 22 and abs(g - b) < 22:
                 continue
 
-            if (r + g + b) / 3 > 210:
+            l = self._luma((r, g, b))
+            if l > 215 or l < 25:
                 continue
 
             filtered.append((r, g, b))
 
         if len(filtered) < 3:
-            filtered = palette
+            filtered = list(palette)
 
-        self.colors = filtered[:3]
+        cols = sorted(filtered[:3], key=self._luma)   # oscuro -> claro
+        if len(cols) < 3:
+            cols = (cols * 3)[:3]
+
+        # el más claro va al centro, como en la referencia
+        self._set_stops([cols[0], cols[2], cols[1]])
 
         self.queue_draw()
+
+    # ---------- draw ----------
 
     def _draw(self, widget, cr):
 
         w = self.get_allocated_width()
         h = self.get_allocated_height()
+        if w <= 0 or h <= 0:
+            return False
 
-        pixel = 12
+        key = (w, h, tuple(self.stops))
+        if self._cache is None or self._cache_key != key:
+            self._cache = self._render(w, h)
+            self._cache_key = key
 
-        c1 = self.colors[0]
-        c2 = self.colors[1]
-        c3 = self.colors[2]
+        cr.set_source_surface(self._cache, 0, 0)
+        cr.paint()
+        return False
 
-        for x in range(0, w, pixel):
-            for y in range(0, h, pixel):
+    def _render(self, w, h):
 
-                t = x / w
+        surf = cairo.ImageSurface(cairo.FORMAT_RGB24, w, h)
+        cr = cairo.Context(surf)
 
-                # COLOR 1
-                if t < 0.30:
-                    color = c1
+        # 1. gradiente suave de fondo
+        grad = cairo.LinearGradient(0, 0, w, 0)
+        for pos, (r, g, b) in self.stops:
+            grad.add_color_stop_rgb(pos, r / 255, g / 255, b / 255)
+        cr.set_source(grad)
+        cr.paint()
 
-                # DITHER 1-2
-                elif t < 0.40:
+        # 2. cuadritos: cada uno toma el color del gradiente
+        #    un poco adelante o atrás de su posición
+        cell, sq = self.CELL, self.SQUARE
+        off = (cell - sq) / 2
+        cols = w // cell
+        rows = h // cell + 1
 
-                    if ((x // pixel) + (y // pixel)) % 2:
-                        color = c1
-                    else:
-                        color = c2
-
-                # COLOR 2
-                elif t < 0.60:
-                    color = c2
-
-                # DITHER 2-3
-                elif t < 0.70:
-
-                    if ((x // pixel) + (y // pixel)) % 2:
-                        color = c2
-                    else:
-                        color = c3
-
-                # COLOR 3
-                else:
-                    color = c3
-
-                r, g, b = color
-
-                cr.set_source_rgb(
-                    r / 255,
-                    g / 255,
-                    b / 255
-                )
-
-                cr.rectangle(
-                    x,
-                    y,
-                    pixel,
-                    pixel
-                )
-
+        for ix in range(self.EDGE_CELLS, cols - self.EDGE_CELLS + 1):
+            x = ix * cell
+            t = (x + cell / 2) / w
+            ca = self._grad(t + self.SHIFT)
+            cb = self._grad(t - self.SHIFT)
+            for iy in range(rows):
+                r, g, b = ca if (ix + iy) % 2 == 0 else cb
+                cr.set_source_rgb(r / 255, g / 255, b / 255)
+                cr.rectangle(x + off, iy * cell + off, sq, sq)
                 cr.fill()
 
-        return False
+        return surf
 # ─────────────────────────────────────────────
 # 3. TEMPERATURA WIDGET
 # ─────────────────────────────────────────────
