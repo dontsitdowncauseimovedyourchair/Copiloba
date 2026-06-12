@@ -1204,8 +1204,12 @@ class CameraScreen(Gtk.Overlay):
 
 
         btn_home = Gtk.Button()
-        pix = Gtk.Image.new_from_file_at_scale("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/home.png", 50, 50, True)
-        img = Gtk.Image.new_from_pixbuf(pix)
+        pix = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/home.png",
+            50,
+            50,
+            True
+        )
         btn_home.set_image(
             Gtk.Image.new_from_pixbuf(pix)
         )
