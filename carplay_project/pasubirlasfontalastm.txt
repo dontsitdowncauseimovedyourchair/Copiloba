@@ -1,0 +1,4 @@
+mkdir -p ~/.fonts
+cp /home/root/fonts/*.ttf ~/.fonts/
+fc-cache -fv
+fc-list | grep Pixel
