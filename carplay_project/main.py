@@ -19,6 +19,7 @@ import random
 import threading
 from PIL import Image
 import subprocess
+from services.copiloba_ai import CopilobaAssistant
 
 # ─────────────────────────────────────────────
 # 1. ESTILOS CSS
@@ -132,6 +133,15 @@ def load_all_css():
         color: rgba(255,255,255,0.85);
         font-size: 30px;
         font-weight: 600;
+    }}
+    
+    .ai-status-bubble {{
+        background: rgba(11, 12, 16, 0.85);
+        color: #66FCF1;
+        border-radius: 20px;
+        padding: 15px 30px;
+        font-size: 35px;
+        font-weight: bold;
     }}
     """
     provider = Gtk.CssProvider()
@@ -556,15 +566,7 @@ class MapScreen(Gtk.Overlay):
             self.HOME_ZOOM
         )
 
-        base = Gtk.Fixed()
-
-        base.put(
-            self.map_widget,
-            0,
-            0
-        )
-
-        self.add(base)
+        self.add(self.map_widget)
 
         # =========================
         # UI ENCIMA DEL MAPA
@@ -718,11 +720,7 @@ class MapScreen(Gtk.Overlay):
             0
         )
 
-        base.put(
-            ui_box,
-            20,
-            20
-        )
+        self.add_overlay(ui_box)
 
     # ====================================
     # HELPERS
@@ -949,16 +947,16 @@ class MusicScreen(Gtk.Overlay):
         sidebar.get_style_context().add_class("sidebar-music")
         volume_widget = VolumeWidget()
         fixed.put(volume_widget, 1050, 20)
-        
+
         btn_back = Gtk.Button()
-        pix = GdkPixbuf.Pixbuf.new_from_file_at_scale("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/home.png", 50, 50, True) 
-        img = Gtk.Image.new_from_pixbuf(pix)  
+        pix = GdkPixbuf.Pixbuf.new_from_file_at_scale("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/home.png", 50, 50, True)
+        img = Gtk.Image.new_from_pixbuf(pix)
         btn_back.set_image(
             Gtk.Image.new_from_pixbuf(pix)
         )
 
         btn_back.set_relief(Gtk.ReliefStyle.NONE)
-        
+
         btn_back.set_image(img)
         btn_back.get_style_context().add_class("circle-button")
         btn_back.connect("clicked", lambda x: nav_callback("home"))
@@ -1214,9 +1212,31 @@ class CarPlayWindow(Gtk.Window):
             print("Librespot error:", e)
 
         self.fullscreen()
+
+        self.fullscreen()
+
+        # --- NEW GLOBAL OVERLAY ---
+        self.global_overlay = Gtk.Overlay()
+        self.add(self.global_overlay)
+
+        # 1. Initialize the AI Assistant
+        self.ai_assistant = CopilobaAssistant(status_callback=self.update_ai_status)
+
+        # 2. Create the floating AI Status Label
+        self.ai_status_label = Gtk.Label(label="")
+        self.ai_status_label.get_style_context().add_class("ai-status-bubble")
+        self.ai_status_label.set_valign(Gtk.Align.START)  # Float at the top
+        self.ai_status_label.set_halign(Gtk.Align.CENTER)  # Centered horizontally
+        self.ai_status_label.set_margin_top(20)  # Push down slightly
+        self.ai_status_label.set_no_show_all(True)  # Keep hidden by default
+
+        # --- YOUR EXISTING STACK ---
         self.stack = Gtk.Stack()
         self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
-        self.add(self.stack)
+
+        # Add the stack as the base of the global overlay, and the label on top!
+        self.global_overlay.add(self.stack)
+        self.global_overlay.add_overlay(self.ai_status_label)
 
         # Home screen (must be built first so home_card exists)
         self.stack.add_named(self._build_home(), "home")
@@ -1272,13 +1292,16 @@ class CarPlayWindow(Gtk.Window):
         # Map button — uses your map.png icon
         btn_map    = create_icon_button("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/map.png")
 
-        for b in [btn_home, btn_music, btn_cam, btn_map]:
+        btn_mic = create_icon_button("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/copiloba.png")
+
+        for b in [btn_home, btn_music, btn_cam, btn_map, btn_mic]:
             dock.pack_start(b, False, False, 0)
 
         btn_home.connect( "clicked", lambda x: self.navigate("home"))
         btn_music.connect("clicked", lambda x: self.navigate("music"))
         btn_cam.connect(  "clicked", lambda x: self.navigate("camera"))
         btn_map.connect(  "clicked", lambda x: self.navigate("map"))
+        btn_mic.connect("clicked", self.on_ai_button_clicked)
 
         fixed.put(dock, 600, 530)
 
@@ -1298,6 +1321,22 @@ class CarPlayWindow(Gtk.Window):
             self.librespot.terminate()
 
         Gtk.main_quit()
+
+    def on_ai_button_clicked(self, widget):
+        print("🎙️ AI Button Clicked!")
+
+        # Make sure the UI bubble updates to let the user know it's listening
+        self.update_ai_status("Escuchando...")
+
+        # Trigger your CopilobaAssistant
+        # (Replace '.start()' or '.listen()' with the actual method name you
+        # wrote inside your services/copiloba_ai.py file)
+        if hasattr(self, 'ai_assistant'):
+            # It's best to run this in a thread so Groq/Piper doesn't freeze the GTK UI
+            self.ai_assistant.trigger_assistant()
+        else:
+            print("NO ATTRIBUTE ai_assistant")
+
 
 class VolumeWidget(Gtk.Box):
 
