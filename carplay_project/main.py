@@ -243,69 +243,73 @@ class MusicGradientBG(Gtk.DrawingArea):
 
         for r, g, b in palette:
 
-            # Ignorar grises
-            if abs(r - g) < 25 and abs(g - b) < 25:
+            if abs(r-g) < 25 and abs(g-b) < 25:
                 continue
 
-            # Ignorar colores demasiado claros
-            brightness = (r + g + b) / 3
-
-            if brightness > 220:
+            if (r+g+b)/3 > 220:
                 continue
 
             filtered.append((r, g, b))
 
-        if not filtered:
-            filtered = palette
+        if len(filtered) < 4:
+            filtered = palette[:4]
 
-        boosted = []
+        self.colors = filtered[:4]
 
-        for r, g, b in filtered:
-
-            boosted.append((
-                min(255, int(r * 1.8)),
-                min(255, int(g * 1.8)),
-                min(255, int(b * 1.8))
-            ))
-
-        self.colors = boosted
         self.queue_draw()
 
     def _draw(self, widget, cr):
+
         w = self.get_allocated_width()
         h = self.get_allocated_height()
 
-        if not self.colors:
-            return False
+        colors = self.colors
 
-        r, g, b = self.colors[0]
+        stripe_w = w / (len(colors) - 1)
 
-        levels = [
-            1.00,
-            0.85,
-            0.70,
-            0.55,
-            0.40
-        ]
+        pixel = 6
 
-        band_h = h / len(levels)
+        for x in range(0, w, pixel):
 
-        for i, factor in enumerate(levels):
+            t = x / w
 
-            cr.set_source_rgb(
-                (r * factor) / 255,
-                (g * factor) / 255,
-                (b * factor) / 255
+            segment = min(
+                len(colors) - 2,
+                int(t * (len(colors)-1))
             )
 
-            cr.rectangle(
-                0,
-                i * band_h,
-                w,
-                band_h + 2
-            )
+            local_t = (
+                t * (len(colors)-1)
+            ) - segment
 
-            cr.fill()
+            c1 = colors[segment]
+            c2 = colors[segment + 1]
+
+            r = c1[0] + (c2[0]-c1[0]) * local_t
+            g = c1[1] + (c2[1]-c1[1]) * local_t
+            b = c1[2] + (c2[2]-c1[2]) * local_t
+
+            for y in range(0, h, pixel):
+
+                if ((x//pixel)+(y//pixel)) % 2 == 0:
+                    factor = 1.15
+                else:
+                    factor = 0.85
+
+                cr.set_source_rgb(
+                    min(1, r/255*factor),
+                    min(1, g/255*factor),
+                    min(1, b/255*factor)
+                )
+
+                cr.rectangle(
+                    x,
+                    y,
+                    pixel,
+                    pixel
+                )
+
+                cr.fill()
 
         return False
 # ─────────────────────────────────────────────
