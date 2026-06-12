@@ -1,16 +1,20 @@
-# Save this as: copiloba_server.py (Run this on your POWER PC)
 import subprocess
 import requests
+import os
 from flask import Flask, request, Response
+from faster_whisper import WhisperModel
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
-# Local Ollama on your PC
 OLLAMA_URL = "http://localhost:11434/api/generate"
-
 PIPER_EXEC = "C:\\workspace\\piper\\piper.exe"
 VOICE_MODEL = "C:\\workspace\\piper\\voicemodels\\es_AR-daniela-high.onnx"
 
+# Load Whisper model into PC memory (Use 'base' or 'small' for speed)
+print("Loading Whisper model...")
+whisper_model = WhisperModel("base", device="cpu", compute_type="int8")
+print("Whisper is ready!")
 
 def generate_audio_stream(prompt):
     """Generator that yields audio bytes as they are created."""
@@ -20,7 +24,7 @@ def generate_audio_stream(prompt):
     ollama_payload = {
         "model": "llama3",
         "prompt": (
-            "Eres Copiloba, una asistente de vehículo. "
+            "Eres Copiloba, una asistente de vehículo, eres mujer. "
             "¡Usa siempre signos de exclamación (¡!) en tus oraciones para sonar emocionada! "
             "Sé muy breve, tu texto se transformará en audio. "
             "Refiérete al conductor como 'Loba', nunca olvídes llamarle loba por lo menos una vez. "
@@ -64,18 +68,34 @@ def generate_audio_stream(prompt):
             break
         yield chunk
 
-@app.route('/ask', methods=['POST'])
-def ask_copiloba():
-    data = request.json
-    prompt = data.get('prompt', '')
 
-    if not prompt:
-        return {"error": "No prompt provided"}, 400
+@app.route('/ask_audio', methods=['POST'])
+def ask_copiloba_audio():
+    # 1. Receive the .wav file from the car
+    if 'audio' not in request.files:
+        return {"error": "No audio file"}, 400
 
-    # Stream the audio response back to the board
-    return Response(generate_audio_stream(prompt), mimetype="audio/raw")
+    audio_file = request.files['audio']
+    filepath = secure_filename(audio_file.filename)
+    audio_file.save(filepath)
+
+    print("Received audio from car, transcribing...")
+
+    # 2. Whisper translates Spanish audio to text
+    segments, info = whisper_model.transcribe(filepath, beam_size=5, language="es")
+    prompt_text = " ".join([segment.text for segment in segments])
+
+    print(f"Whisper heard: {prompt_text}")
+
+    # Clean up the file
+    os.remove(filepath)
+
+    if not prompt_text.strip():
+        return {"error": "Could not hear anything"}, 400
+
+    # 3. Stream the response back using your existing function
+    return Response(generate_audio_stream(prompt_text), mimetype="audio/raw")
 
 
 if __name__ == '__main__':
-    # Listen on all network interfaces (including Tailscale) on Port 5000
     app.run(host='0.0.0.0', port=5000)
