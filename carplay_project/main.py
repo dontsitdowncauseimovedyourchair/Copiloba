@@ -1476,6 +1476,62 @@ class CarPlayWindow(Gtk.Window):
         else:
             self.ai_status_label.hide()
         return False  # Required for GTK3 to prevent infinite loops
+    
+    def execute_command(self, cmd):
+        """Llamado desde el hilo del asistente con el dict del servidor."""
+        action = cmd.get("action", "none")
+        args = cmd.get("args") or {}
+        if action != "none":
+            GLib.idle_add(self._run_command, action, args)
+
+    def _run_command(self, action, args):
+        try:
+            if action == "volume_up":
+                self._set_volume("10%+")
+            elif action == "volume_down":
+                self._set_volume("10%-")
+            elif action == "volume_set":
+                pct = max(0, min(100, int(args.get("percent", 50))))
+                self._set_volume(f"{pct}%")
+
+            elif action == "music_next":
+                self.music_screen.next_track(None)
+            elif action == "music_prev":
+                self.music_screen.previous_track(None)
+            elif action == "music_toggle":
+                self.music_screen.toggle_play(None)
+            elif action == "music_play":
+                self._play_song(args.get("query", ""))
+
+            elif action in ("open_music", "open_camera", "open_map", "open_home"):
+                self.navigate(action.replace("open_", ""))
+
+            elif action == "navigate_to":
+                dest = (args.get("destination") or "").strip()
+                if dest:
+                    self.navigate("map")
+                    self.map_screen._entry.set_text(dest)
+                    self.map_screen._on_go_clicked(None)
+        except Exception as e:
+            print("Command error:", action, e)
+        return False  # idle_add: ejecutar una sola vez
+
+    def _set_volume(self, value):
+        subprocess.run(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", value])
+
+    def _play_song(self, query):
+        if not query:
+            return
+        def task():
+            try:
+                sp = self.music_screen.sp
+                res = sp.search(q=query, type="track", limit=1)
+                items = res["tracks"]["items"]
+                if items:
+                    sp.start_playback(uris=[items[0]["uri"]])
+            except Exception as e:
+                print("Play song error:", e)
+        threading.Thread(target=task, daemon=True).start()
 
 
 class VolumeWidget(Gtk.Box):
