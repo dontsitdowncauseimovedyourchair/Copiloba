@@ -243,18 +243,15 @@ class MusicGradientBG(Gtk.DrawingArea):
 
         for r, g, b in palette:
 
-            if abs(r-g) < 25 and abs(g-b) < 25:
-                continue
-
-            if (r+g+b)/3 > 220:
+            if abs(r-g) < 20 and abs(g-b) < 20:
                 continue
 
             filtered.append((r, g, b))
 
-        if len(filtered) < 4:
-            filtered = palette[:4]
+        if len(filtered) < 3:
+            filtered = palette
 
-        self.colors = filtered[:4]
+        self.colors = filtered[:3]
 
         self.queue_draw()
 
@@ -263,63 +260,58 @@ class MusicGradientBG(Gtk.DrawingArea):
         w = self.get_allocated_width()
         h = self.get_allocated_height()
 
-        colors = self.colors
+        pixel = 14
 
-        stripe_w = w / (len(colors) - 1)
+        if len(self.colors) < 3:
+            return False
 
-        pixel = 12
+        c1 = self.colors[0]
+        c2 = self.colors[1]
+        c3 = self.colors[2]
 
         for x in range(0, w, pixel):
 
             t = x / w
 
-            segment = min(
-                len(colors) - 2,
-                int(t * (len(colors)-1))
+            if t < 0.25:
+                current = c1
+
+            elif t < 0.40:
+
+                if ((x // pixel) % 2):
+                    current = c1
+                else:
+                    current = c2
+
+            elif t < 0.60:
+                current = c2
+
+            elif t < 0.75:
+
+                if ((x // pixel) % 2):
+                    current = c2
+                else:
+                    current = c3
+
+            else:
+                current = c3
+
+            r, g, b = current
+
+            cr.set_source_rgb(
+                r / 255,
+                g / 255,
+                b / 255
             )
 
-            local_t = (
-                t * (len(colors)-1)
-            ) - segment
+            cr.rectangle(
+                x,
+                0,
+                pixel,
+                h
+            )
 
-            c1 = colors[segment]
-            c2 = colors[segment + 1]
-
-            r = c1[0] + (c2[0]-c1[0]) * local_t
-            g = c1[1] + (c2[1]-c1[1]) * local_t
-            b = c1[2] + (c2[2]-c1[2]) * local_t
-
-            for y in range(0, h, pixel):
-
-                if ((x//pixel)+(y//pixel)) % 2 == 0:
-                    factor = 1.15
-                else:
-                    factor = 0.85
-
-                cr.set_source_rgb(
-                    min(1, r/255*factor),
-                    min(1, g/255*factor),
-                    min(1, b/255*factor)
-                )
-
-                cr.rectangle(
-                    x,
-                    y,
-                    pixel,
-                    pixel
-                )
-
-                radius = pixel * 0.35
-
-                cr.arc(
-                    x + pixel/2,
-                    y + pixel/2,
-                    radius,
-                    0,
-                    math.pi * 2
-                )
-
-                cr.fill()
+            cr.fill()
 
         return False
 # ─────────────────────────────────────────────
