@@ -163,6 +163,75 @@ def rounded_rect(cr, x, y, w, h, r):
     cr.close_path()
 
 
+class MainGradientBG(Gtk.DrawingArea):
+    CELL = 20        # antes 13
+    SQUARE = 13      # antes 6
+    SHIFT = 0.10     # un poco más de contraste en los cuadritos
+    EDGE_CELLS = 2
+    def __init__(self):
+        super().__init__()
+        self.phase = 0.0
+        self.theme = random.randint(0, 4)
+        self.connect("draw", self._draw)
+
+    def animate(self):
+        self.phase += 0.008
+        self.queue_draw()
+        return True
+    
+    
+
+    def _draw(self, widget, cr):
+        w = widget.get_allocated_width()
+        h = widget.get_allocated_height()
+        cr.set_source_rgb(0.12, 0.11, 0.16)
+        cr.paint()
+        t = self.phase
+        if self.theme == 0:
+            c1 = (0.55, 0.18, 1.00); c2 = (0.35, 0.45, 1.00)
+            c3 = (0.15, 0.70, 1.00); c4 = (0.85, 0.15, 0.70)
+            c5 = (1.00, 1.00, 1.00); c6 = (1.00, 0.85, 0.25)
+        elif self.theme == 1:
+            c1 = (1.00, 0.30, 0.75); c2 = (1.00, 0.50, 0.85)
+            c3 = (0.80, 0.35, 1.00); c4 = (1.00, 0.15, 0.45)
+            c5 = (1.00, 1.00, 1.00); c6 = (1.00, 0.75, 0.40)
+        elif self.theme == 2:
+            c1 = (0.25, 0.45, 1.00); c2 = (0.10, 0.70, 1.00)
+            c3 = (0.15, 0.90, 0.90); c4 = (0.35, 0.35, 1.00)
+            c5 = (1.00, 1.00, 1.00); c6 = (0.85, 0.90, 1.00)
+        elif self.theme == 3:
+            c1 = (1.00, 0.40, 0.20); c2 = (1.00, 0.65, 0.15)
+            c3 = (1.00, 0.25, 0.55); c4 = (0.80, 0.15, 0.75)
+            c5 = (1.00, 1.00, 1.00); c6 = (1.00, 0.90, 0.40)
+        else:
+            c1 = (0.10, 0.85, 0.75); c2 = (0.10, 0.65, 1.00)
+            c3 = (0.15, 1.00, 0.60); c4 = (0.20, 0.80, 0.95)
+            c5 = (1.00, 1.00, 1.00); c6 = (0.90, 1.00, 0.60)
+
+        blobs = [
+            (w * 0.30 + math.sin(t * 0.7) * 180, h * 0.25 + math.cos(t * 0.4) * 120, w * 0.75, c1, 0.75, 0.25),
+            (w * 0.75 + math.cos(t * 0.5) * 140, h * 0.30 + math.sin(t * 0.8) * 110, w * 0.65, c2, 0.60, 0.20),
+            (w * 0.55 + math.sin(t * 0.9) * 220, h * 0.80 + math.cos(t * 0.5) * 90,  w * 0.55, c3, 0.45, 0.15),
+            (w * 0.90 + math.sin(t * 0.2) * 80,  h * 0.65 + math.cos(t * 0.6) * 140, w * 0.65, c4, 0.35, 0.12),
+            (w * 0.15 + math.cos(t * 0.35) * 100, h * 0.75 + math.sin(t * 0.20) * 60, w * 0.55, c5, 0.18, 0.0),
+            (w * 0.80 + math.sin(t * 0.45) * 120, h * 0.20 + math.cos(t * 0.25) * 80, w * 0.45, c6, 0.30, 0.10),
+        ]
+        for (bx, by, br, c, a0, a1) in blobs:
+            g = cairo.RadialGradient(bx, by, 0, bx, by, br)
+            g.add_color_stop_rgba(0,   c[0], c[1], c[2], a0)
+            g.add_color_stop_rgba(0.6, c[0], c[1], c[2], a1)
+            g.add_color_stop_rgba(1,   0, 0, 0, 0)
+            cr.set_source(g)
+            cr.paint()
+
+        glow = cairo.RadialGradient(w * 0.5, h * 0.5, 0, w * 0.5, h * 0.5, w * 0.7)
+        glow.add_color_stop_rgba(0, 1, 1, 1, 0.08)
+        glow.add_color_stop_rgba(1, 1, 1, 1, 0)
+        cr.set_source(glow)
+        cr.paint()
+        return False
+
+
 class MusicGradientBG(Gtk.DrawingArea):
     CELL = 13        # tamaño de celda (cuadro + espacio)
     SQUARE = 6       # tamaño del cuadrito
@@ -185,7 +254,7 @@ class MusicGradientBG(Gtk.DrawingArea):
     @staticmethod
     def _luma(c):
         return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
-    
+
     @staticmethod
     def _vivid(c, sat_boost=1.45, val_boost=1.15):
         """Sube saturación y brillo de un color extraído del cover."""
