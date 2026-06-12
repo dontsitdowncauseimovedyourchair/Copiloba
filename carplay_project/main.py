@@ -854,65 +854,6 @@ class HomeSpotifyCard(Gtk.Box):
 
         controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=20)
 
-        volume_controls = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=10
-        )
-
-        
-        btn_vol_down = Gtk.Button()
-
-        pix_vol_down = GdkPixbuf.Pixbuf.new_from_file_at_scale(
-            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/lessvolume.png",
-            45,
-            45,
-            True
-        )
-
-        btn_vol_down.set_image(
-            Gtk.Image.new_from_pixbuf(pix_vol_down)
-        )
-
-        btn_vol_up = Gtk.Button()
-
-        pix_vol_up = GdkPixbuf.Pixbuf.new_from_file_at_scale(
-            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/morevolume.png",
-            50,
-            50,
-            True
-        )
-
-        btn_vol_up.set_image(
-            Gtk.Image.new_from_pixbuf(pix_vol_up)
-        )
-
-        btn_vol_down.get_style_context().add_class("transport-button")
-        btn_vol_up.get_style_context().add_class("transport-button")
-
-        btn_vol_down.connect(
-            "clicked",
-            self.volume_down
-        )
-
-        btn_vol_up.connect(
-            "clicked",
-            self.volume_up
-        )
-
-        volume_controls.pack_start(
-            btn_vol_down,
-            False,
-            False,
-            0
-        )
-
-        volume_controls.pack_start(
-            btn_vol_up,
-            False,
-            False,
-            0
-        )
-
         btn_prev = Gtk.Button()
         pix = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/rewind.png",
@@ -1060,6 +1001,8 @@ class MusicScreen(Gtk.Overlay):
         # Sidebar
         sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         sidebar.get_style_context().add_class("sidebar-music")
+        volume_widget = VolumeWidget()
+        fixed.put(volume_widget, 1050, 20)
 
         btn_back = Gtk.Button()
         img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/home.png")
@@ -1317,6 +1260,8 @@ class CarPlayWindow(Gtk.Window):
         except Exception as e:
             print("Librespot error:", e)
 
+
+        
         self.fullscreen()
         self.stack = Gtk.Stack()
         self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
@@ -1403,6 +1348,71 @@ class CarPlayWindow(Gtk.Window):
 
         Gtk.main_quit()
 
+class VolumeWidget(Gtk.Box):
+
+    def __init__(self):
+        super().__init__(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=10
+        )
+
+        self.get_style_context().add_class(
+            "volume-widget"
+        )
+
+        btn_down = Gtk.Button()
+        btn_up = Gtk.Button()
+
+        pix_down = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/lessvolume.png",
+            40,
+            40,
+            True
+        )
+
+        pix_up = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/morevolume.png",
+            55,
+            55,
+            True
+        )
+
+        btn_down.set_image(
+            Gtk.Image.new_from_pixbuf(pix_down)
+        )
+
+        btn_up.set_image(
+            Gtk.Image.new_from_pixbuf(pix_up)
+        )
+
+        btn_down.connect(
+            "clicked",
+            self.volume_down
+        )
+
+        btn_up.connect(
+            "clicked",
+            self.volume_up
+        )
+
+        self.pack_start(btn_down, False, False, 0)
+        self.pack_start(btn_up, False, False, 0)
+
+    def volume_up(self, widget):
+        subprocess.run([
+            "wpctl",
+            "set-volume",
+            "@DEFAULT_AUDIO_SINK@",
+            "5%+"
+        ])
+
+    def volume_down(self, widget):
+        subprocess.run([
+            "wpctl",
+            "set-volume",
+            "@DEFAULT_AUDIO_SINK@",
+            "5%-"
+        ])
 
 # ─────────────────────────────────────────────
 # ENTRY POINT
