@@ -1397,6 +1397,7 @@ class CarPlayWindow(Gtk.Window):
         btn_music.connect("clicked", lambda x: self.navigate("music"))
         btn_cam.connect(  "clicked", lambda x: self.navigate("camera"))
         btn_map.connect(  "clicked", lambda x: self.navigate("map"))
+        btn_mic.connect("clicked", self.on_ai_button_clicked)
 
         fixed.put(dock, 600, 530)
 
@@ -1425,6 +1426,21 @@ class CarPlayWindow(Gtk.Window):
         else:
             self.ai_status_label.hide()
         return False  # Required for GTK3 to prevent infinite loops
+
+    def on_ai_button_clicked(self, widget):
+        print("🎙️ AI Button Clicked!")
+
+        # Make sure the UI bubble updates to let the user know it's listening
+        self.update_ai_status("Escuchando...")
+
+        # Trigger your CopilobaAssistant
+        # (Replace '.start()' or '.listen()' with the actual method name you
+        # wrote inside your services/copiloba_ai.py file)
+        if hasattr(self, 'ai_assistant'):
+            # It's best to run this in a thread so Groq/Piper doesn't freeze the GTK UI
+            self.ai_assistant.trigger_assistant()
+        else:
+            print("NO ATTRIBUTE ai_assistant")
 
 
 # ─────────────────────────────────────────────
