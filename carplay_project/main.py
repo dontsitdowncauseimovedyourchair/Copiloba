@@ -227,9 +227,36 @@ class MainGradientBG(Gtk.DrawingArea):
         glow = cairo.RadialGradient(w * 0.5, h * 0.5, 0, w * 0.5, h * 0.5, w * 0.7)
         glow.add_color_stop_rgba(0, 1, 1, 1, 0.08)
         glow.add_color_stop_rgba(1, 1, 1, 1, 0)
-        cr.set_source(glow)
+        cr.set_source_surface(self._get_texture(w, h), 0, 0)
         cr.paint()
         return False
+    
+    def _get_texture(self, w, h):
+        key = (w, h)
+        if getattr(self, "_tex_key", None) == key:
+            return self._tex
+
+        surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
+        c = cairo.Context(surf)
+
+        cell, sq = self.CELL, self.SQUARE
+        off = (cell - sq) / 2
+        cols = w // cell
+        rows = h // cell + 1
+
+        for ix in range(self.EDGE_CELLS, cols - self.EDGE_CELLS + 1):
+            x = ix * cell
+            for iy in range(rows):
+                if (ix + iy) % 2 == 0:
+                    c.set_source_rgba(1, 1, 1, 0.10)   # aclara el color local
+                else:
+                    c.set_source_rgba(0, 0, 0, 0.10)   # lo oscurece
+                c.rectangle(x + off, iy * cell + off, sq, sq)
+                c.fill()
+
+        self._tex = surf
+        self._tex_key = key
+        return surf
 
 
 class MusicGradientBG(Gtk.DrawingArea):
@@ -265,16 +292,13 @@ class MusicGradientBG(Gtk.DrawingArea):
         return (r * 255, g * 255, b * 255)
 
     def _set_stops(self, cols):
-        a, b, c = (self._vivid(x) for x in cols)
-        white = (255, 255, 255)
-        self.stops = [
-            (0.00, tuple(a)),                     # ya sin oscurecer bordes
-            (0.22, tuple(a)),
-            (0.50, self._mix(b, white, 0.22)),    # antes 0.55 — apenas un brillo
-            (0.78, tuple(c)),
-            (1.00, tuple(c)),
-        ]
-        self._cache = None
+            a, b, c = (self._vivid(x) for x in cols)
+            self.stops = [
+                (0.00, tuple(a)),
+                (0.50, tuple(b)),
+                (1.00, tuple(c)),
+            ]
+            self._cache = None
 
     def _set_stops(self, cols):
         a, b, c = cols
@@ -360,16 +384,19 @@ class MusicGradientBG(Gtk.DrawingArea):
 
         # 2. cuadritos: cada uno toma el color del gradiente
         #    un poco adelante o atrás de su posición
+  # 2. cuadritos: versión más clara / más oscura del color local
         cell, sq = self.CELL, self.SQUARE
         off = (cell - sq) / 2
         cols = w // cell
         rows = h // cell + 1
+        white, black = (255, 255, 255), (0, 0, 0)
 
         for ix in range(self.EDGE_CELLS, cols - self.EDGE_CELLS + 1):
             x = ix * cell
             t = (x + cell / 2) / w
-            ca = self._grad(t + self.SHIFT)
-            cb = self._grad(t - self.SHIFT)
+            base = self._grad(t)
+            ca = self._mix(base, white, 0.14)   # un poco más claro
+            cb = self._mix(base, black, 0.14)   # un poco más oscuro
             for iy in range(rows):
                 r, g, b = ca if (ix + iy) % 2 == 0 else cb
                 cr.set_source_rgb(r / 255, g / 255, b / 255)
