@@ -951,7 +951,14 @@ class MusicScreen(Gtk.Overlay):
         fixed.put(volume_widget, 1050, 20)
         
         btn_back = Gtk.Button()
-        img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/home.png")
+        pix = GdkPixbuf.Pixbuf.new_from_file_at_scale("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/home.png", 50, 50, True) 
+        img = Gtk.Image.new_from_pixbuf(pix)  
+        btn_back.set_image(
+            Gtk.Image.new_from_pixbuf(pix)
+        )
+
+        btn_back.set_relief(Gtk.ReliefStyle.NONE)
+        
         btn_back.set_image(img)
         btn_back.get_style_context().add_class("circle-button")
         btn_back.connect("clicked", lambda x: nav_callback("home"))
