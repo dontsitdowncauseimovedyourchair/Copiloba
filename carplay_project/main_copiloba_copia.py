@@ -888,9 +888,6 @@ class HomeSpotifyCard(Gtk.Box):
             Gtk.Image.new_from_pixbuf(vol_up_img)
         )
 
-        btn_vol_down.set_image(pix_vol_down)
-        btn_vol_up.set_image(vol_up_img)
-
         btn_vol_down.get_style_context().add_class("circle-button")
         btn_vol_up.get_style_context().add_class("circle-button")
 
