@@ -1402,7 +1402,7 @@ class CarPlayWindow(Gtk.Window):
 
         btn_mic = Gtk.Button()
         pixmic = GdkPixbuf.Pixbuf.new_from_file_at_scale(
-            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/mic.png",
+            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/copiloba.png",
             42,
             42,
             True
