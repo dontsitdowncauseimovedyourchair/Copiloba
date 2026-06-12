@@ -857,9 +857,26 @@ class HomeSpotifyCard(Gtk.Box):
 
         
         btn_vol_down = Gtk.Button()
-        vol_down_img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/lessvolume.png")
+        pix_vol_down = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/lessvolume.png",
+            45,
+            45,
+            True
+        )
+        btn_vol_down.set_image(
+            Gtk.Image.new_from_pixbuf(pix_vol_down)
+        )
+        
         btn_vol_up = Gtk.Button()
-        vol_up_img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/morevolume.png")
+        vol_up_img = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/morevolume.png",
+            45,
+            45,
+            True
+        )
+        btn_vol_up.set_image(
+            Gtk.Image.new_from_pixbuf(vol_up_img)
+        )
 
         btn_vol_down.set_image(vol_down_img)
         btn_vol_up.set_image(vol_up_img)
@@ -894,8 +911,8 @@ class HomeSpotifyCard(Gtk.Box):
         btn_prev = Gtk.Button()
         pix = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/rewind.png",
-            32,
-            32,
+            45,
+            45,
             True
         )
 
@@ -906,8 +923,8 @@ class HomeSpotifyCard(Gtk.Box):
         btn_play = Gtk.Button()
         play_pix = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/play.png",
-            32,
-            32,
+            45,
+            45,
             True
         )   
         btn_play.set_image(
@@ -916,14 +933,14 @@ class HomeSpotifyCard(Gtk.Box):
         btn_next = Gtk.Button()
         next_pix = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/next.png",
-            32,
-            32,
+            45,
+            45,
             True
         )
         btn_next.set_image(
             Gtk.Image.new_from_pixbuf(next_pix)
         )
-
+       
 
         btn_prev.get_style_context().add_class("transport-button")
         btn_play.get_style_context().add_class("transport-button")
