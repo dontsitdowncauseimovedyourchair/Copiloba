@@ -893,14 +893,20 @@ class HomeSpotifyCard(Gtk.Box):
 
         btn_prev = Gtk.Button()
         prev_img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/rewind.png")
+        #ajustar tamaño de la imagen
+        prev_img.set_size_request(20, 20)
         btn_prev.set_image(prev_img)
 
         btn_play = Gtk.Button()
         play_img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/play.png")
+        #ajustar tamaño de la imagen
+        play_img.set_size_request(20, 20)
         btn_play.set_image(play_img)
 
         btn_next = Gtk.Button()
         next_img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/next.png")
+        #ajustar tamaño de la imagen
+        next_img.set_size_request(20, 20)
         btn_next.set_image(next_img)
 
 
