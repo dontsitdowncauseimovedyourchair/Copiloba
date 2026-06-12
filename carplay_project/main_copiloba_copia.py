@@ -566,15 +566,7 @@ class MapScreen(Gtk.Overlay):
             self.HOME_ZOOM
         )
 
-        base = Gtk.Fixed()
-
-        base.put(
-            self.map_widget,
-            0,
-            0
-        )
-
-        self.add(base)
+        self.add(self.map_widget)
 
         # =========================
         # UI ENCIMA DEL MAPA
@@ -1345,10 +1337,6 @@ class CarPlayWindow(Gtk.Window):
         # Add the stack as the base of the global overlay, and the label on top!
         self.global_overlay.add(self.stack)
         self.global_overlay.add_overlay(self.ai_status_label)
-
-        self.stack = Gtk.Stack()
-        self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
-        self.add(self.stack)
 
         # Home screen (must be built first so home_card exists)
         self.stack.add_named(self._build_home(), "home")
