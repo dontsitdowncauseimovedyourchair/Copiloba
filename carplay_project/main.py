@@ -289,31 +289,32 @@ class MusicGradientBG(Gtk.DrawingArea):
             g = c1[1] + (c2[1]-c1[1]) * local_t
             b = c1[2] + (c2[2]-c1[2]) * local_t
 
-        for x in range(0, w, pixel):
             for y in range(0, h, pixel):
 
                 if ((x//pixel)+(y//pixel)) % 2 == 0:
-
-                    cr.set_source_rgba(
-                        1,
-                        1,
-                        1,
-                        0.12
-                    )
-
+                    factor = 1.15
                 else:
+                    factor = 0.85
 
-                    cr.set_source_rgba(
-                        0,
-                        0,
-                        0,
-                        0.12
-                    )
+                cr.set_source_rgb(
+                    min(1, r/255*factor),
+                    min(1, g/255*factor),
+                    min(1, b/255*factor)
+                )
+
+                cr.rectangle(
+                    x,
+                    y,
+                    pixel,
+                    pixel
+                )
+
+                radius = pixel * 0.35
 
                 cr.arc(
                     x + pixel/2,
                     y + pixel/2,
-                    pixel * 0.25,
+                    radius,
                     0,
                     math.pi * 2
                 )
