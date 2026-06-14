@@ -1,3 +1,4 @@
+
 import gi
 
 gi.require_version("Gtk", "3.0")
@@ -22,7 +23,7 @@ from PIL import Image
 import subprocess
 from services.copiloba_ai import CopilobaAssistant
 import colorsys  # stdlib, junto a tus otros imports
-
+import re
 
 # ─────────────────────────────────────────────
 # 1. ESTILOS CSS
@@ -146,6 +147,29 @@ def load_all_css():
         font-size: 35px;
         font-weight: bold;
     }}
+    
+    .temp-cabin {{
+        color: white;
+        font-size: 28px;
+        font-weight: 700;
+    }}
+    .gps-chip {{
+        background: rgba(11, 12, 16, 0.75);
+        color: rgba(255,255,255,0.55);
+        padding: 8px 18px;
+        font-size: 24px;
+        font-weight: bold;
+    }}
+    .gps-ok {{ color: #00ff88; }}
+    .distance-chip {{
+        background: rgba(11, 12, 16, 0.75);
+        padding: 10px 30px;
+        font-size: 56px;
+        font-weight: 900;
+    }}
+    .dist-far  {{ color: #00ff88; }}
+    .dist-mid  {{ color: #ffe14d; }}
+    .dist-near {{ color: #ff5555; }}
     """
     provider = Gtk.CssProvider()
     provider.load_from_data(css.encode())
@@ -284,18 +308,6 @@ class MusicGradientBG(Gtk.DrawingArea):
             (0.00, tuple(a)),
             (0.50, tuple(b)),
             (1.00, tuple(c)),
-        ]
-        self._cache = None
-
-    def _set_stops(self, cols):
-        a, b, c = cols
-        white, black = (255, 255, 255), (0, 0, 0)
-        self.stops = [
-            (0.00, self._mix(a, black, 0.20)),
-            (0.18, tuple(a)),
-            (0.50, self._mix(b, white, 0.55)),  # centro brillante
-            (0.82, tuple(c)),
-            (1.00, self._mix(c, black, 0.20)),
         ]
         self._cache = None
 
@@ -466,9 +478,19 @@ class TemperatureWidget(Gtk.Box):
         self.pack_start(self.lbl_city, False, False, 0)
         self.pack_start(self.lbl_desc, False, False, 0)
 
+        self.lbl_cabin = Gtk.Label(label="")
+        self.lbl_cabin.get_style_context().add_class("temp-cabin")
+        self.lbl_cabin.set_halign(Gtk.Align.CENTER)
+        self.lbl_cabin.set_no_show_all(True)  # aparece solo cuando hay dato real
+        self.pack_start(self.lbl_cabin, False, False, 0)
+
         # Fetch on start, then every 10 minutes
         self._fetch_async()
-        GLib.timeout_add_seconds(15, self._fetch_async)
+        GLib.timeout_add_seconds(600, self._fetch_async)
+
+    def set_cabin(self, temp, pressure=None):
+        self.lbl_cabin.set_text(f"Cabina {temp:.1f}°C")
+        self.lbl_cabin.show()
 
     def _fetch_async(self):
         t = threading.Thread(target=self._fetch, daemon=True)
@@ -817,6 +839,25 @@ class MapScreen(Gtk.Overlay):
 
         self.add_overlay(ui_box)
 
+        self._has_fix = False
+        self._gps_chip = Gtk.Label(label="SIN GPS")
+        self._gps_chip.get_style_context().add_class("gps-chip")
+        self._gps_chip.set_halign(Gtk.Align.START)
+        self._gps_chip.set_valign(Gtk.Align.END)
+        self._gps_chip.set_margin_start(16)
+        self._gps_chip.set_margin_bottom(16)
+        self.add_overlay(self._gps_chip)
+
+    def update_gps(self, lat, lon):
+        self._origin_lat = lat
+        self._origin_lon = lon
+        self.map_widget.gps_add(lat, lon, 0.0)  # punto azul + rastro
+        if not self._has_fix:
+            self._has_fix = True
+            self._gps_chip.set_text("GPS ●")
+            self._gps_chip.get_style_context().add_class("gps-ok")
+            self.map_widget.set_center_and_zoom(lat, lon, 15)
+
     # ====================================
     # HELPERS
     # ====================================
@@ -860,14 +901,6 @@ class MapScreen(Gtk.Overlay):
 
         self._set_status(
             "Calculando ruta..."
-        )
-
-        self.map_widget.gps_clear()
-
-        self.map_widget.gps_add(
-            lat,
-            lon,
-            0.0
         )
 
         self._nav_system.request_osrm_route(
@@ -1372,6 +1405,11 @@ class CarPlayWindow(Gtk.Window):
         self.map_screen = MapScreen(self.navigate)
         self.stack.add_named(self.map_screen, "map")
 
+        self.sensors = RPMsgSensorService()
+        self.sensors.subscribe("env", self.temp_widget.set_cabin)
+        self.sensors.subscribe("gps", self.map_screen.update_gps)
+        self.sensors.start()
+
     def _build_home(self):
         overlay = Gtk.Overlay()
         overlay.add(MainGradientBG())
@@ -1478,6 +1516,9 @@ class CarPlayWindow(Gtk.Window):
 
         if hasattr(self, "librespot"):
             self.librespot.terminate()
+
+        if hasattr(self, "sensors"):
+            self.sensors.stop()
 
         Gtk.main_quit()
 
@@ -1629,6 +1670,93 @@ class VolumeWidget(Gtk.Box):
             "@DEFAULT_AUDIO_SINK@",
             "5%-"
         ])
+
+class RPMsgSensorService:
+    """Lee los sensores del Cortex-M33 vía OpenAMP (/dev/ttyRPMSG0)
+    sin bloquear GTK, y reparte las lecturas a quien se suscriba."""
+
+    DEVICE = "/dev/ttyRPMSG0"
+    FLOAT_RE = re.compile(r"[-+]?\d+(?:\.\d+)?")
+
+    def __init__(self):
+        self._subs = {"gps": [], "env": [], "tof": [], "status": []}
+        self._buffer = ""
+        self._fd = -1
+
+    def subscribe(self, kind, callback):
+        self._subs[kind].append(callback)
+
+    def start(self):
+        if not self._open():
+            GLib.timeout_add_seconds(5, self._retry)
+
+    def _retry(self):
+        return not self._open()   # True = reintenta en 5s, False = conectado
+
+    def _open(self):
+        try:
+            self._fd = os.open(self.DEVICE, os.O_RDWR | os.O_NONBLOCK)
+            os.write(self._fd, b"wake up!\n")   # registra nuestro endpoint en el M33
+            GLib.io_add_watch(self._fd, GLib.IO_IN, self._on_data)
+            self._emit("status", True)
+            print("✅ RPMsg conectado al M33")
+            return True
+        except Exception as e:
+            print("RPMsg no disponible aún:", e)
+            self._fd = -1
+            self._emit("status", False)
+            return False
+
+    def _on_data(self, fd, condition):
+        try:
+            data = os.read(fd, 512)
+        except BlockingIOError:
+            return True
+        except OSError as e:
+            print("❌ RPMsg perdido:", e)
+            self._fd = -1
+            self._emit("status", False)
+            GLib.timeout_add_seconds(5, self._retry)
+            return False   # quita este watch; _retry crea uno nuevo
+
+        if data:
+            self._buffer += data.decode("utf-8", errors="replace")
+            while "\n" in self._buffer:
+                line, self._buffer = self._buffer.split("\n", 1)
+                self._parse(line.strip())
+        return True
+
+    def _parse(self, line):
+        if ":" not in line:
+            return
+        tag, payload = line.split(":", 1)   # ¡el tag tiene dígitos, sepáralo!
+        nums = [float(x) for x in self.FLOAT_RE.findall(payload)]
+
+        if "NEO6MV2" in tag and len(nums) >= 2:
+            lat, lon = nums[0], nums[1]
+            if -90 <= lat <= 90 and -180 <= lon <= 180 and (lat or lon):
+                self._emit("gps", lat, lon)
+            # "Searching for satellites..." no trae números: se ignora solo
+
+        elif "VL53L0X" in tag and nums:
+            self._emit("tof", nums[0])                       # mm
+
+        elif "BME280" in tag and nums:
+            self._emit("env", nums[0],
+                        nums[1] if len(nums) > 1 else None)  # T, P
+
+    def _emit(self, kind, *args):
+        # io_add_watch corre en el main loop de GTK: es seguro tocar la UI
+        for cb in self._subs.get(kind, []):
+            cb(*args)
+
+    def stop(self):
+        if self._fd >= 0:
+            try:
+                os.close(self._fd)
+            except OSError:
+                pass
+            self._fd = -1
 
 
 # ─────────────────────────────────────────────
