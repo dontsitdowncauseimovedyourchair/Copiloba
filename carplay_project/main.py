@@ -1,5 +1,7 @@
 import gi
 
+from carplay_project.gtk_prueba_prueba_pro.b import copilobaWindow
+
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gst", "1.0")
 gi.require_version("OsmGpsMap", "1.0")
@@ -1241,7 +1243,7 @@ class CarPlayWindow(Gtk.Window):
         self.add(self.global_overlay)
 
         # 1. Initialize the AI Assistant
-        self.ai_assistant = CopilobaAssistant(status_callback=self.update_ai_status)
+        self.ai_assistant = CopilobaAssistant(status_callback=CopilobaAssistant.trigger_assistant)
 
         # 2. Create the floating AI Status Label
         self.ai_status_label = Gtk.Label(label="")
