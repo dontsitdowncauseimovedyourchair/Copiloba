@@ -1,7 +1,4 @@
 import gi
-
-from carplay_project.gtk_prueba_prueba_pro.b import copilobaWindow
-
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gst", "1.0")
 gi.require_version("OsmGpsMap", "1.0")
@@ -1324,7 +1321,7 @@ class CarPlayWindow(Gtk.Window):
         btn_music.connect("clicked", lambda x: self.navigate("music"))
         btn_cam.connect("clicked", lambda x: self.navigate("camera"))
         btn_map.connect("clicked", lambda x: self.navigate("map"))
-        btn_mic.connect("clicked", self.on_ai_button_clicked)
+        btn_mic.connect("clicked", self.ai_assistant.trigger_assistant)
 
         fixed.put(dock, 600, 530)
 
