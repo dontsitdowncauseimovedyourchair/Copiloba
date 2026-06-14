@@ -1,4 +1,5 @@
 import gi
+
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gst", "1.0")
 gi.require_version("OsmGpsMap", "1.0")
@@ -20,6 +21,7 @@ import threading
 from PIL import Image
 import subprocess
 from services.copiloba_ai import CopilobaAssistant
+import colorsys  # stdlib, junto a tus otros imports
 
 
 # ─────────────────────────────────────────────
@@ -84,6 +86,7 @@ def load_all_css():
         font-weight: 700;
         color: white;
     }}
+
     .home-artist {{
         font-size: 30px;
         color: rgba(255,255,255,0.7);
@@ -164,94 +167,149 @@ def rounded_rect(cr, x, y, w, h, r):
 
 
 class MainGradientBG(Gtk.DrawingArea):
+    CELL = 20
+    SQUARE = 13
+    EDGE_CELLS = 2
+    TEXTURE = 0.12  # qué tan visible es el patrón de cuadritos
+
+    THEMES = [
+        [(0.55, 0.18, 1.00), (0.35, 0.45, 1.00), (0.15, 0.70, 1.00)],  # violeta -> azul
+        [(1.00, 0.15, 0.45), (1.00, 0.45, 0.80), (0.80, 0.35, 1.00)],  # rosa -> lila
+        [(0.15, 0.90, 0.90), (0.10, 0.65, 1.00), (0.30, 0.35, 1.00)],  # cian -> azul
+        [(1.00, 0.45, 0.15), (1.00, 0.75, 0.20), (1.00, 0.25, 0.55)],  # naranja -> rosa
+        [(0.10, 0.85, 0.70), (0.15, 1.00, 0.55), (0.85, 1.00, 0.40)],  # turquesa -> lima
+    ]
+
     def __init__(self):
         super().__init__()
-        self.phase = 0.0
-        self.theme = random.randint(0, 4)
+        self.colors = random.choice(self.THEMES)
+        self._cache = None
+        self._cache_key = None
         self.connect("draw", self._draw)
 
-    def animate(self):
-        self.phase += 0.008
-        self.queue_draw()
-        return True
+    @staticmethod
+    def _mix(c1, c2, t):
+        return tuple(c1[i] + (c2[i] - c1[i]) * t for i in range(3))
+
+    def _grad(self, t):
+        a, b, c = self.colors
+        t = max(0.0, min(1.0, t))
+        if t < 0.5:
+            return self._mix(a, b, t * 2)
+        return self._mix(b, c, (t - 0.5) * 2)
 
     def _draw(self, widget, cr):
         w = widget.get_allocated_width()
         h = widget.get_allocated_height()
-        cr.set_source_rgb(0.12, 0.11, 0.16)
-        cr.paint()
-        t = self.phase
-        if self.theme == 0:
-            c1 = (0.55, 0.18, 1.00);
-            c2 = (0.35, 0.45, 1.00)
-            c3 = (0.15, 0.70, 1.00);
-            c4 = (0.85, 0.15, 0.70)
-            c5 = (1.00, 1.00, 1.00);
-            c6 = (1.00, 0.85, 0.25)
-        elif self.theme == 1:
-            c1 = (1.00, 0.30, 0.75);
-            c2 = (1.00, 0.50, 0.85)
-            c3 = (0.80, 0.35, 1.00);
-            c4 = (1.00, 0.15, 0.45)
-            c5 = (1.00, 1.00, 1.00);
-            c6 = (1.00, 0.75, 0.40)
-        elif self.theme == 2:
-            c1 = (0.25, 0.45, 1.00);
-            c2 = (0.10, 0.70, 1.00)
-            c3 = (0.15, 0.90, 0.90);
-            c4 = (0.35, 0.35, 1.00)
-            c5 = (1.00, 1.00, 1.00);
-            c6 = (0.85, 0.90, 1.00)
-        elif self.theme == 3:
-            c1 = (1.00, 0.40, 0.20);
-            c2 = (1.00, 0.65, 0.15)
-            c3 = (1.00, 0.25, 0.55);
-            c4 = (0.80, 0.15, 0.75)
-            c5 = (1.00, 1.00, 1.00);
-            c6 = (1.00, 0.90, 0.40)
-        else:
-            c1 = (0.10, 0.85, 0.75);
-            c2 = (0.10, 0.65, 1.00)
-            c3 = (0.15, 1.00, 0.60);
-            c4 = (0.20, 0.80, 0.95)
-            c5 = (1.00, 1.00, 1.00);
-            c6 = (0.90, 1.00, 0.60)
+        if w <= 0 or h <= 0:
+            return False
 
-        blobs = [
-            (w * 0.30 + math.sin(t * 0.7) * 180, h * 0.25 + math.cos(t * 0.4) * 120, w * 0.75, c1, 0.75, 0.25),
-            (w * 0.75 + math.cos(t * 0.5) * 140, h * 0.30 + math.sin(t * 0.8) * 110, w * 0.65, c2, 0.60, 0.20),
-            (w * 0.55 + math.sin(t * 0.9) * 220, h * 0.80 + math.cos(t * 0.5) * 90, w * 0.55, c3, 0.45, 0.15),
-            (w * 0.90 + math.sin(t * 0.2) * 80, h * 0.65 + math.cos(t * 0.6) * 140, w * 0.65, c4, 0.35, 0.12),
-            (w * 0.15 + math.cos(t * 0.35) * 100, h * 0.75 + math.sin(t * 0.20) * 60, w * 0.55, c5, 0.18, 0.0),
-            (w * 0.80 + math.sin(t * 0.45) * 120, h * 0.20 + math.cos(t * 0.25) * 80, w * 0.45, c6, 0.30, 0.10),
-        ]
-        for (bx, by, br, c, a0, a1) in blobs:
-            g = cairo.RadialGradient(bx, by, 0, bx, by, br)
-            g.add_color_stop_rgba(0, c[0], c[1], c[2], a0)
-            g.add_color_stop_rgba(0.6, c[0], c[1], c[2], a1)
-            g.add_color_stop_rgba(1, 0, 0, 0, 0)
-            cr.set_source(g)
-            cr.paint()
+        key = (w, h, tuple(self.colors))
+        if self._cache is None or self._cache_key != key:
+            self._cache = self._render(w, h)
+            self._cache_key = key
 
-        glow = cairo.RadialGradient(w * 0.5, h * 0.5, 0, w * 0.5, h * 0.5, w * 0.7)
-        glow.add_color_stop_rgba(0, 1, 1, 1, 0.08)
-        glow.add_color_stop_rgba(1, 1, 1, 1, 0)
-        cr.set_source(glow)
+        cr.set_source_surface(self._cache, 0, 0)
         cr.paint()
         return False
 
+    def _render(self, w, h):
+        surf = cairo.ImageSurface(cairo.FORMAT_RGB24, w, h)
+        cr = cairo.Context(surf)
+
+        # gradiente base, colores puros
+        grad = cairo.LinearGradient(0, 0, w, 0)
+        for pos in (0.0, 0.5, 1.0):
+            r, g, b = self._grad(pos)
+            grad.add_color_stop_rgb(pos, r, g, b)
+        cr.set_source(grad)
+        cr.paint()
+
+        # cuadritos: versión apenas más clara / más oscura del color local
+        cell, sq, k = self.CELL, self.SQUARE, self.TEXTURE
+        off = (cell - sq) / 2
+        cols = w // cell
+        rows = h // cell + 1
+        white, black = (1, 1, 1), (0, 0, 0)
+
+        for ix in range(self.EDGE_CELLS, cols - self.EDGE_CELLS + 1):
+            x = ix * cell
+            base = self._grad((x + cell / 2) / w)
+            ca = self._mix(base, white, k)
+            cb = self._mix(base, black, k)
+            for iy in range(rows):
+                r, g, b = ca if (ix + iy) % 2 == 0 else cb
+                cr.set_source_rgb(r, g, b)
+                cr.rectangle(x + off, iy * cell + off, sq, sq)
+                cr.fill()
+
+        return surf
+
 
 class MusicGradientBG(Gtk.DrawingArea):
+    CELL = 13  # tamaño de celda (cuadro + espacio)
+    SQUARE = 6  # tamaño del cuadrito
+    SHIFT = 0.085  # qué tanto se desplaza el color de los cuadritos
+    EDGE_CELLS = 2  # columnas sólidas en cada borde
+
     def __init__(self):
         super().__init__()
-        self.colors = [
-            (255, 80, 180),
-            (120, 70, 255),
-            (60, 180, 255),
-            (255, 180, 60),
-        ]
-        self.phase = 0
+        self._cache = None
+        self._cache_key = None
+        self._set_stops([(168, 12, 40), (250, 235, 120), (0, 150, 84)])
         self.connect("draw", self._draw)
+
+    # ---------- helpers ----------
+
+    @staticmethod
+    def _mix(c1, c2, t):
+        return tuple(c1[i] + (c2[i] - c1[i]) * t for i in range(3))
+
+    @staticmethod
+    def _luma(c):
+        return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+
+    @staticmethod
+    def _vivid(c, sat_boost=1.45, val_boost=1.15):
+        """Sube saturación y brillo de un color extraído del cover."""
+        h, s, v = colorsys.rgb_to_hsv(c[0] / 255, c[1] / 255, c[2] / 255)
+        s = min(1.0, s * sat_boost)
+        v = min(1.0, v * val_boost)
+        r, g, b = colorsys.hsv_to_rgb(h, s, v)
+        return (r * 255, g * 255, b * 255)
+
+    def _set_stops(self, cols):
+        a, b, c = (self._vivid(x) for x in cols)
+        self.stops = [
+            (0.00, tuple(a)),
+            (0.50, tuple(b)),
+            (1.00, tuple(c)),
+        ]
+        self._cache = None
+
+    def _set_stops(self, cols):
+        a, b, c = cols
+        white, black = (255, 255, 255), (0, 0, 0)
+        self.stops = [
+            (0.00, self._mix(a, black, 0.20)),
+            (0.18, tuple(a)),
+            (0.50, self._mix(b, white, 0.55)),  # centro brillante
+            (0.82, tuple(c)),
+            (1.00, self._mix(c, black, 0.20)),
+        ]
+        self._cache = None
+
+    def _grad(self, t):
+        t = max(0.0, min(1.0, t))
+        for i in range(len(self.stops) - 1):
+            p0, c0 = self.stops[i]
+            p1, c1 = self.stops[i + 1]
+            if t <= p1:
+                k = 0.0 if p1 == p0 else (t - p0) / (p1 - p0)
+                return self._mix(c0, c1, k)
+        return self.stops[-1][1]
+
+    # ---------- API ----------
 
     def set_palette(self, palette):
 
@@ -259,69 +317,80 @@ class MusicGradientBG(Gtk.DrawingArea):
 
         for r, g, b in palette:
 
-            # Ignorar grises
-            if abs(r - g) < 25 and abs(g - b) < 25:
+            # quitar blancos y grises
+            if abs(r - g) < 22 and abs(g - b) < 22:
                 continue
 
-            # Ignorar colores demasiado claros
-            brightness = (r + g + b) / 3
-
-            if brightness > 220:
+            l = self._luma((r, g, b))
+            if l > 215 or l < 25:
                 continue
 
             filtered.append((r, g, b))
 
-        if not filtered:
-            filtered = palette
+        if len(filtered) < 3:
+            filtered = list(palette)
 
-        boosted = []
+        cols = sorted(filtered[:3], key=self._luma)  # oscuro -> claro
+        if len(cols) < 3:
+            cols = (cols * 3)[:3]
 
-        for r, g, b in filtered:
-            boosted.append((
-                min(255, int(r * 1.8)),
-                min(255, int(g * 1.8)),
-                min(255, int(b * 1.8))
-            ))
+        # el más claro va al centro, como en la referencia
+        self._set_stops([cols[0], cols[2], cols[1]])
 
-        self.colors = boosted
         self.queue_draw()
 
+    # ---------- draw ----------
+
     def _draw(self, widget, cr):
+
         w = self.get_allocated_width()
         h = self.get_allocated_height()
-
-        if not self.colors:
+        if w <= 0 or h <= 0:
             return False
 
-        r, g, b = self.colors[0]
+        key = (w, h, tuple(self.stops))
+        if self._cache is None or self._cache_key != key:
+            self._cache = self._render(w, h)
+            self._cache_key = key
 
-        levels = [
-            1.00,
-            0.85,
-            0.70,
-            0.55,
-            0.40
-        ]
-
-        band_h = h / len(levels)
-
-        for i, factor in enumerate(levels):
-            cr.set_source_rgb(
-                (r * factor) / 255,
-                (g * factor) / 255,
-                (b * factor) / 255
-            )
-
-            cr.rectangle(
-                0,
-                i * band_h,
-                w,
-                band_h + 2
-            )
-
-            cr.fill()
-
+        cr.set_source_surface(self._cache, 0, 0)
+        cr.paint()
         return False
+
+    def _render(self, w, h):
+
+        surf = cairo.ImageSurface(cairo.FORMAT_RGB24, w, h)
+        cr = cairo.Context(surf)
+
+        # 1. gradiente suave de fondo
+        grad = cairo.LinearGradient(0, 0, w, 0)
+        for pos, (r, g, b) in self.stops:
+            grad.add_color_stop_rgb(pos, r / 255, g / 255, b / 255)
+        cr.set_source(grad)
+        cr.paint()
+
+        # 2. cuadritos: cada uno toma el color del gradiente
+        #    un poco adelante o atrás de su posición
+        # 2. cuadritos: versión más clara / más oscura del color local
+        cell, sq = self.CELL, self.SQUARE
+        off = (cell - sq) / 2
+        cols = w // cell
+        rows = h // cell + 1
+        white, black = (255, 255, 255), (0, 0, 0)
+
+        for ix in range(self.EDGE_CELLS, cols - self.EDGE_CELLS + 1):
+            x = ix * cell
+            t = (x + cell / 2) / w
+            base = self._grad(t)
+            ca = self._mix(base, white, 0.14)  # un poco más claro
+            cb = self._mix(base, black, 0.14)  # un poco más oscuro
+            for iy in range(rows):
+                r, g, b = ca if (ix + iy) % 2 == 0 else cb
+                cr.set_source_rgb(r / 255, g / 255, b / 255)
+                cr.rectangle(x + off, iy * cell + off, sq, sq)
+                cr.fill()
+
+        return surf
 
 
 # ─────────────────────────────────────────────
@@ -399,7 +468,7 @@ class TemperatureWidget(Gtk.Box):
 
         # Fetch on start, then every 10 minutes
         self._fetch_async()
-        GLib.timeout_add_seconds(600, self._fetch_async)
+        GLib.timeout_add_seconds(15, self._fetch_async)
 
     def _fetch_async(self):
         t = threading.Thread(target=self._fetch, daemon=True)
@@ -583,6 +652,16 @@ class MapScreen(Gtk.Overlay):
         )
 
         self.add(self.map_widget)
+
+        # Marcador: Tec de Monterrey Campus Estado de México
+        try:
+            pin = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/map.png",
+                48, 48, True
+            )
+            self.map_widget.image_add(19.59326, -99.22916, pin)
+        except Exception as e:
+            print("Marker error:", e)
 
         # =========================
         # UI ENCIMA DEL MAPA
@@ -939,8 +1018,8 @@ class MusicScreen(Gtk.Overlay):
 
         self.sp = spotipy.Spotify(
             auth_manager=SpotifyOAuth(
-                client_id="6186b61db32f4eb59ae55a299ef475ad",
-                client_secret="7dea9bd274b0436fafea5b676838c71c",
+                client_id="5f55822a8c56431b9ca382d93c6cf518",
+                client_secret="c658ed2d3b80442d95a9876c562f0fd6",
                 redirect_uri="http://127.0.0.1:8888/callback",
                 scope="user-read-playback-state user-modify-playback-state",
                 cache_path="/home/root/spotify.cache",
@@ -1109,16 +1188,22 @@ class MusicScreen(Gtk.Overlay):
             print(e)
 
     def toggle_play(self, widget):
-        try:
-            playback = self.sp.current_playback()
-            if playback["is_playing"]:
-                self.sp.pause_playback()
-                self.btn_play.set_label("▶")
-            else:
-                self.sp.start_playback()
-                self.btn_play.set_label("⏸")
-        except Exception as e:
-            print(e)
+        def task():
+            try:
+                playback = self.sp.current_playback()
+                if playback and playback.get("is_playing"):
+                    self.sp.pause_playback()
+                else:
+                    dev = None
+                    for d in self.sp.devices().get("devices", []):
+                        if d["name"] == "Copiloba":
+                            dev = d["id"]
+                            break
+                    self.sp.start_playback(device_id=dev)
+            except Exception as e:
+                print("Toggle error:", e)
+
+        threading.Thread(target=task, daemon=True).start()
 
 
 # ─────────────────────────────────────────────
@@ -1137,8 +1222,15 @@ class CameraScreen(Gtk.Overlay):
         self.add(video_widget)
 
         btn_home = Gtk.Button()
-        img = Gtk.Image.new_from_file("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/home.png")
-        btn_home.set_image(img)
+        pix = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/home.png",
+            50,
+            50,
+            True
+        )
+        btn_home.set_image(
+            Gtk.Image.new_from_pixbuf(pix)
+        )
         btn_home.set_halign(Gtk.Align.START)
         btn_home.set_valign(Gtk.Align.START)
         btn_home.set_margin_start(20)
@@ -1223,11 +1315,15 @@ class CarPlayWindow(Gtk.Window):
             print("Bluetooth sink error:", e)
 
         try:
-            self.librespot = subprocess.Popen([
-                "/home/root/librespot",
-                "--name",
-                "Copiloba"
-            ])
+
+            already = subprocess.run(["pgrep", "-x", "librespot"],
+                                     capture_output=True).returncode == 0
+            if not already:
+                self.librespot = subprocess.Popen([
+                    "/home/root/librespot",
+                    "--name", "Copiloba",
+                    "--cache", "/home/root/.cache/librespot",
+                ])
         except Exception as e:
             print("Librespot error:", e)
 
@@ -1240,7 +1336,10 @@ class CarPlayWindow(Gtk.Window):
         self.add(self.global_overlay)
 
         # 1. Initialize the AI Assistant
-        self.ai_assistant = CopilobaAssistant(status_callback=CopilobaAssistant.trigger_assistant)
+        self.ai_assistant = CopilobaAssistant(
+            status_callback=self.update_ai_status,
+            command_callback=self.execute_command,
+        )
 
         # 2. Create the floating AI Status Label
         self.ai_status_label = Gtk.Label(label="")
@@ -1306,22 +1405,62 @@ class CarPlayWindow(Gtk.Window):
             btn.get_style_context().add_class("dock-button")
             return btn
 
-        btn_home = create_icon_button("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/home.png")
-        btn_music = create_icon_button("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/music.png")
-        btn_cam = create_icon_button("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/camera.png")
+        btn_music = Gtk.Button()
+        pixmusic = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/music.png",
+            70,
+            70,
+            True
+        )
+        btn_music.set_image(
+            Gtk.Image.new_from_pixbuf(pixmusic)
+        )
+
+        btn_cam = Gtk.Button()
+        pixcam = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/camera.png",
+            70,
+            70,
+            True
+        )
+        btn_cam.set_image(
+            Gtk.Image.new_from_pixbuf(pixcam)
+        )
         # Map button — uses your map.png icon
-        btn_map = create_icon_button("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/map.png")
+        btn_map = Gtk.Button()
+        pixmap = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/map.png",
+            70,
+            70,
+            True
+        )
+        btn_map.set_image(
+            Gtk.Image.new_from_pixbuf(pixmap)
+        )
 
-        btn_mic = create_icon_button("/home/root/copilobarepo/SoC-Carplay/carplay_project/media/copiloba.png")
+        btn_mic = Gtk.Button()
+        pixmic = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/copiloba.png",
+            70,
+            70,
+            True
+        )
+        btn_mic.set_image(
+            Gtk.Image.new_from_pixbuf(pixmic)
+        )
 
-        for b in [btn_home, btn_music, btn_cam, btn_map, btn_mic]:
+        btn_music.get_style_context().add_class("dock-button")
+        btn_cam.get_style_context().add_class("dock-button")
+        btn_map.get_style_context().add_class("dock-button")
+        btn_mic.get_style_context().add_class("dock-button")
+
+        for b in [btn_music, btn_cam, btn_map, btn_mic]:
             dock.pack_start(b, False, False, 0)
 
-        btn_home.connect("clicked", lambda x: self.navigate("home"))
         btn_music.connect("clicked", lambda x: self.navigate("music"))
         btn_cam.connect("clicked", lambda x: self.navigate("camera"))
         btn_map.connect("clicked", lambda x: self.navigate("map"))
-        btn_mic.connect("clicked", self.ai_assistant.trigger_assistant)
+        btn_mic.connect("clicked", self.on_ai_button_clicked)
 
         fixed.put(dock, 600, 530)
 
@@ -1341,6 +1480,88 @@ class CarPlayWindow(Gtk.Window):
             self.librespot.terminate()
 
         Gtk.main_quit()
+
+    def on_ai_button_clicked(self, widget):
+        print("🎙️ AI Button Clicked!")
+
+        # Make sure the UI bubble updates to let the user know it's listening
+        self.update_ai_status("Escuchando...")
+
+        # Trigger your CopilobaAssistant
+        # (Replace '.start()' or '.listen()' with the actual method name you
+        # wrote inside your services/copiloba_ai.py file)
+        if hasattr(self, 'ai_assistant'):
+            # It's best to run this in a thread so Groq/Piper doesn't freeze the GTK UI
+            self.ai_assistant.trigger_assistant()
+        else:
+            print("NO ATTRIBUTE ai_assistant")
+
+    def update_ai_status(self, message):
+        """Safely updates the floating AI label from the background thread."""
+        if message:
+            self.ai_status_label.set_text(message)
+            self.ai_status_label.show()
+        else:
+            self.ai_status_label.hide()
+        return False  # Required for GTK3 to prevent infinite loops
+
+    def execute_command(self, cmd):
+        """Llamado desde el hilo del asistente con el dict del servidor."""
+        action = cmd.get("action", "none")
+        args = cmd.get("args") or {}
+        if action != "none":
+            GLib.idle_add(self._run_command, action, args)
+
+    def _run_command(self, action, args):
+        try:
+            if action == "volume_up":
+                self._set_volume("10%+")
+            elif action == "volume_down":
+                self._set_volume("10%-")
+            elif action == "volume_set":
+                pct = max(0, min(100, int(args.get("percent", 50))))
+                self._set_volume(f"{pct}%")
+
+            elif action == "music_next":
+                self.music_screen.next_track(None)
+            elif action == "music_prev":
+                self.music_screen.previous_track(None)
+            elif action == "music_toggle":
+                self.music_screen.toggle_play(None)
+            elif action == "music_play":
+                self._play_song(args.get("query", ""))
+
+            elif action in ("open_music", "open_camera", "open_map", "open_home"):
+                self.navigate(action.replace("open_", ""))
+
+            elif action == "navigate_to":
+                dest = (args.get("destination") or "").strip()
+                if dest:
+                    self.navigate("map")
+                    self.map_screen._entry.set_text(dest)
+                    self.map_screen._on_go_clicked(None)
+        except Exception as e:
+            print("Command error:", action, e)
+        return False  # idle_add: ejecutar una sola vez
+
+    def _set_volume(self, value):
+        subprocess.run(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", value])
+
+    def _play_song(self, query):
+        if not query:
+            return
+
+        def task():
+            try:
+                sp = self.music_screen.sp
+                res = sp.search(q=query, type="track", limit=1)
+                items = res["tracks"]["items"]
+                if items:
+                    sp.start_playback(uris=[items[0]["uri"]])
+            except Exception as e:
+                print("Play song error:", e)
+
+        threading.Thread(target=task, daemon=True).start()
 
 
 class VolumeWidget(Gtk.Box):
@@ -1417,6 +1638,6 @@ if __name__ == "__main__":
     Gst.init(None)
     load_all_css()
     win = CarPlayWindow()
-    win.connect("destroy", Gtk.main_quit)
+    win.connect("destroy", win.on_destroy)  # antes: Gtk.main_quit
     win.show_all()
     Gtk.main()
