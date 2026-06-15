@@ -146,7 +146,6 @@ def ask_copiloba_audio():
     print(f"Action: {cmd['action']} {cmd['args']} | Say: {cmd['say']}")
 
     # el comando viaja en un header (base64 para sobrevivir acentos);
-    # el audio sigue siendo el body, igual que antes
     header_value = base64.b64encode(
         json.dumps({"action": cmd["action"], "args": cmd["args"]}).encode("utf-8")
     ).decode("ascii")

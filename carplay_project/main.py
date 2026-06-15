@@ -640,8 +640,8 @@ class NavigationSystem:
 
 
 class MapScreen(Gtk.Overlay):
-    HOME_LAT = 19.5556
-    HOME_LON = -99.2472
+    HOME_LAT = 19.59326
+    HOME_LON = -99.22916
     HOME_ZOOM = 14
 
     def __init__(self, nav_callback):
@@ -675,7 +675,6 @@ class MapScreen(Gtk.Overlay):
 
         self.add(self.map_widget)
 
-        # Marcador: Tec de Monterrey Campus Estado de México
         try:
             pin = GdkPixbuf.Pixbuf.new_from_file_at_scale(
                 "/home/root/copilobarepo/SoC-Carplay/carplay_project/media/map.png",
