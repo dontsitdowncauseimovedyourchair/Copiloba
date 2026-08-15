@@ -1,6 +1,10 @@
-# SoC-Carplay
-Super carplay pro + copiloba
+# Copiloba
 
-An embedded linux infotainment system that communicates with a Flask API backend for embedded AI functionalities and interfaces real time sensors via OpenAMP. 
+An embedded Linux infotainment system built on the state-of-the-art development board STM32MP257F-DK
 
-Built on the state-of-the-art development board STM32MP257F-DK
+- Camera
+- Map with GPS
+- Spotify integration
+- Communication with a custom Flask API backend for embedded AI functionalities
+- AI powered voice commands
+- Interface with real time sensors via OpenAMP 
